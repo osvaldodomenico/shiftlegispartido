@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SidebarTrigger } from "../ui/sidebar";
+import { NotificationBell } from "@/components/crm/NotificationBell";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Painel operacional",
@@ -11,6 +14,23 @@ const pageTitles: Record<string, string> = {
   "/finance/transactions/new": "Nova transação",
   "/finance/approvals": "Aprovações financeiras",
   "/auth/login": "Acesso ao sistema",
+  // CRM
+  "/crm": "CRM — Dashboard",
+  "/crm/contacts": "CRM — Contatos",
+  "/crm/pipeline": "CRM — Pipeline",
+  "/crm/tasks": "CRM — Tarefas",
+  "/crm/events": "CRM — Eventos",
+  "/crm/import": "CRM — Importação",
+  "/crm/settings/pipeline": "CRM — Configurações de Pipeline",
+  "/crm/settings/tags": "CRM — Configurações de Tags",
+  // Electoral
+  "/electoral/elections": "Electoral — Eleições",
+  "/electoral/campaigns": "Electoral — Campanhas",
+  // Partido
+  "/party/chapters": "Partido — Diretórios",
+  "/party/organs": "Partido — Órgãos",
+  // Mandatos
+  "/mandates": "Mandatos",
 };
 
 const Header = () => {
@@ -32,13 +52,16 @@ const Header = () => {
           </div>
         </div>
 
-        <div className="hidden items-center gap-2 md:flex">
-          <Link
-            href="/view-profile"
-            className="rounded-xl border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100 dark:border-slate-600 dark:text-neutral-100 dark:hover:bg-slate-800"
-          >
-            Perfil
-          </Link>
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <div className="hidden items-center gap-2 md:flex">
+            <Link
+              href="/view-profile"
+              className="rounded-xl border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100 dark:border-slate-600 dark:text-neutral-100 dark:hover:bg-slate-800"
+            >
+              Perfil
+            </Link>
+          </div>
         </div>
       </div>
     </header>

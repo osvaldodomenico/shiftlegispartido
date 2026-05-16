@@ -6,6 +6,17 @@ import {
   House,
   Mail,
   UserRound,
+  Users,
+  KanbanSquare,
+  CheckSquare,
+  CalendarCheck,
+  Upload,
+  Settings2,
+  Vote,
+  Megaphone,
+  Network,
+  Landmark,
+  ScrollText,
 } from "lucide-react";
 
 export const data = {
@@ -35,6 +46,101 @@ export const data = {
           circleColor: "bg-amber-500",
         },
       ],
+    },
+    {
+      label: "CRM",
+    },
+    {
+      title: "CRM",
+      url: "#",
+      icon: Users,
+      permission: "crm.contacts.read",
+      items: [
+        {
+          title: "Dashboard",
+          url: "/crm",
+          circleColor: "bg-primary",
+        },
+        {
+          title: "Contatos",
+          url: "/crm/contacts",
+          circleColor: "bg-blue-500",
+          permission: "crm.contacts.read",
+        },
+        {
+          title: "Pipeline",
+          url: "/crm/pipeline",
+          circleColor: "bg-violet-500",
+          permission: "crm.pipeline.manage",
+        },
+        {
+          title: "Tarefas",
+          url: "/crm/tasks",
+          circleColor: "bg-amber-500",
+          permission: "crm.tasks.manage",
+        },
+        {
+          title: "Eventos",
+          url: "/crm/events",
+          circleColor: "bg-green-500",
+        },
+        {
+          title: "Importar",
+          url: "/crm/import",
+          circleColor: "bg-orange-500",
+          permission: "crm.import.execute",
+        },
+        {
+          title: "Configurações",
+          url: "/crm/settings/pipeline",
+          circleColor: "bg-slate-400",
+        },
+      ],
+    },
+    {
+      label: "Electoral",
+    },
+    {
+      title: "Electoral",
+      url: "#",
+      icon: Vote,
+      items: [
+        {
+          title: "Eleições",
+          url: "/electoral/elections",
+          circleColor: "bg-primary",
+        },
+        {
+          title: "Campanhas",
+          url: "/electoral/campaigns",
+          circleColor: "bg-blue-500",
+        },
+      ],
+    },
+    {
+      label: "Partido",
+    },
+    {
+      title: "Partido",
+      url: "#",
+      icon: Landmark,
+      items: [
+        {
+          title: "Diretórios",
+          url: "/party/chapters",
+          circleColor: "bg-primary",
+        },
+        {
+          title: "Órgãos",
+          url: "/party/organs",
+          circleColor: "bg-blue-500",
+        },
+      ],
+    },
+    {
+      title: "Mandatos",
+      url: "/mandates",
+      icon: ScrollText,
     },
     {
       label: "Gestão",
