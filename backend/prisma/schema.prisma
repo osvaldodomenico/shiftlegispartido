@@ -1,0 +1,938 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model tenants {
+  id         BigInt         @id @default(autoincrement())
+  name       String         @db.VarChar(255)
+  cnpj       String?        @db.VarChar(20)
+  email      String?        @db.VarChar(255)
+  phone      String?        @db.VarChar(20)
+  website    String?        @db.VarChar(255)
+  country    String?        @db.VarChar(100)
+  city       String?        @db.VarChar(100)
+  state      String?        @db.VarChar(2)
+  zip_code   String?        @db.VarChar(10)
+  street     String?        @db.VarChar(255)
+  number     String?        @db.VarChar(20)
+  district   String?        @db.VarChar(100)
+  complement String?        @db.VarChar(255)
+  status     tenants_status @default(active)
+  created_at DateTime       @default(now())
+  updated_at DateTime?      @updatedAt
+  deleted_at DateTime?
+
+  users                     users[]
+  roles                     roles[]
+  permissions               permissions[]
+  people                    people[]
+  transactions              transactions[]
+  documents                 documents[]
+  contributions             contributions[]
+  financial_categories      financial_categories[]
+  cost_centers              cost_centers[]
+  financial_period_closings financial_period_closings[]
+  recurring_transactions    recurring_transactions[]
+  audit_logs                audit_logs[]
+  // CRM relations
+  tags                      tags[]
+  people_tags               people_tags[]
+  pipeline_stages           pipeline_stages[]
+  pipeline_entries          pipeline_entries[]
+  interactions              interactions[]
+  tasks                     tasks[]
+  notifications             notifications[]
+  events                    events[]
+  event_attendances         event_attendances[]
+  device_tokens             device_tokens[]
+  crm_imports               crm_imports[]
+
+  @@map("partido_tenants")
+}
+
+model users {
+  id                   BigInt       @id @default(autoincrement())
+  tenant_id            BigInt
+  name                 String?      @db.VarChar(255)
+  email                String?      @unique @db.VarChar(255)
+  cpf                  String?      @db.VarChar(20)
+  password_hash        String?      @db.VarChar(255)
+  two_factor_enabled   Boolean      @default(false)
+  status               users_status @default(active)
+  last_login_at        DateTime?
+  last_password_change DateTime?
+  token_version        Int          @default(0)
+  created_at           DateTime     @default(now())
+  updated_at           DateTime?    @updatedAt
+  deleted_at           DateTime?
+
+  tenant         tenants         @relation(fields: [tenant_id], references: [id])
+  user_roles     user_roles[]
+  audit_logs     audit_logs[]
+  person         people?
+  // CRM relations
+  tasks_assigned tasks[]         @relation("TaskAssignee")
+  notifications  notifications[]
+  device_tokens  device_tokens[]
+
+  @@map("partido_users")
+}
+
+model people {
+  id              BigInt        @id @default(autoincrement())
+  tenant_id       BigInt
+  user_id         BigInt?       @unique // vínculo opcional com conta de usuário (1:1)
+  name            String        @db.VarChar(255)
+  email           String?       @db.VarChar(255)
+  phone           String?       @db.VarChar(20)
+  cpf_hash        String?       @db.VarChar(64) // HMAC-SHA256 para busca/unicidade
+  cpf_encrypted   String?       @db.Text // AES-256-CBC — nunca exposto em response
+  cpf_key_version Int           @default(1) // versão da chave — permite rotação sem perda
+  type            people_type
+  status          people_status @default(active)
+  birthdate       DateTime?     @db.Date
+  address         String?       @db.VarChar(255)
+  city            String?       @db.VarChar(100)
+  state           String?       @db.VarChar(2)
+  zip_code        String?       @db.VarChar(10)
+  notes           String?       @db.Text
+  created_at      DateTime      @default(now())
+  updated_at      DateTime?     @updatedAt
+  deleted_at      DateTime?
+
+  tenant                 tenants                  @relation(fields: [tenant_id], references: [id])
+  user                   users?                   @relation(fields: [user_id], references: [id])
+  transactions           transactions[]
+  contributions          contributions[]
+  recurring_transactions recurring_transactions[]
+  // CRM back-relations (adicionadas na migração crm_electoral_party_complete)
+  people_tags            people_tags[]
+  pipeline_entries       pipeline_entries[]
+  interactions           interactions[]
+  tasks                  tasks[]
+  event_attendances      event_attendances[]
+
+  @@unique([tenant_id, cpf_hash])
+  @@index([tenant_id])
+  @@index([tenant_id, name])
+  @@index([tenant_id, status])
+  @@index([tenant_id, type])
+  @@index([tenant_id, deleted_at])
+  @@map("partido_people")
+}
+
+model roles {
+  id          BigInt    @id @default(autoincrement())
+  tenant_id   BigInt
+  name        String    @db.VarChar(100)
+  description String?   @db.Text
+  created_at  DateTime  @default(now())
+  deleted_at  DateTime?
+
+  tenant           tenants            @relation(fields: [tenant_id], references: [id])
+  user_roles       user_roles[]
+  role_permissions role_permissions[]
+
+  @@unique([tenant_id, name])
+  @@map("partido_roles")
+}
+
+model permissions {
+  id          BigInt  @id @default(autoincrement())
+  tenant_id   BigInt
+  key_name    String  @db.VarChar(100)
+  description String? @db.VarChar(255)
+
+  tenant           tenants            @relation(fields: [tenant_id], references: [id])
+  role_permissions role_permissions[]
+
+  @@unique([tenant_id, key_name])
+  @@map("partido_permissions")
+}
+
+model role_permissions {
+  role_id       BigInt
+  permission_id BigInt
+
+  role       roles       @relation(fields: [role_id], references: [id])
+  permission permissions @relation(fields: [permission_id], references: [id])
+
+  @@id([role_id, permission_id])
+  @@map("partido_role_permissions")
+}
+
+model user_roles {
+  user_id BigInt
+  role_id BigInt
+
+  user  users @relation(fields: [user_id], references: [id])
+  roles roles @relation(fields: [role_id], references: [id])
+
+  @@id([user_id, role_id])
+  @@map("partido_user_roles")
+}
+
+model audit_logs {
+  id         BigInt   @id @default(autoincrement())
+  tenant_id  BigInt?
+  user_id    BigInt?
+  action     String   @db.VarChar(255)
+  entity     String?  @db.VarChar(100)
+  entity_id  BigInt?
+  metadata   Json?
+  ip_address String?  @db.VarChar(45)
+  created_at DateTime @default(now())
+
+  tenant tenants? @relation(fields: [tenant_id], references: [id])
+  user   users?   @relation(fields: [user_id], references: [id])
+
+  @@map("partido_audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FINANCEIRO — TRANSAÇÕES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model transactions {
+  id          BigInt              @id @default(autoincrement())
+  tenant_id   BigInt
+  person_id   BigInt
+  description String              @db.VarChar(255)
+  amount      Decimal             @db.Decimal(12, 2)
+  type        transaction_type
+  status      transaction_status  @default(draft)
+  context     transaction_context @default(diretorio)
+  origin      transaction_origin  @default(manual)
+
+  // Categoria obrigatória — FK para financial_categories
+  category_id BigInt
+
+  // Centro de custo opcional
+  cost_center_id BigInt?
+
+  // Campanha — obrigatório quando context = campanha
+  campaign_id BigInt?
+
+  // Competência contábil — usada para bloqueio de período fechado
+  competency_month Int // 1–12
+  competency_year  Int // YYYY
+
+  due_date          DateTime  @db.Date
+  paid_at           DateTime? @db.Date
+  notes             String?   @db.Text
+  attachments_count Int       @default(0)
+
+  // Rastreabilidade de origem recorrente
+  recurring_transaction_id BigInt?
+
+  created_by BigInt?
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
+  deleted_at DateTime?
+
+  tenant      tenants              @relation(fields: [tenant_id], references: [id])
+  person      people               @relation(fields: [person_id], references: [id])
+  category    financial_categories @relation(fields: [category_id], references: [id])
+  cost_center cost_centers?        @relation(fields: [cost_center_id], references: [id])
+
+  status_history transaction_status_history[]
+  approvals      transaction_approvals[]
+
+  @@index([tenant_id])
+  @@index([tenant_id, status])
+  @@index([tenant_id, type])
+  @@index([tenant_id, context])
+  @@index([tenant_id, due_date])
+  @@index([tenant_id, due_date, status])
+  @@index([tenant_id, person_id])
+  @@index([tenant_id, category_id])
+  @@index([tenant_id, cost_center_id])
+  @@index([tenant_id, competency_year, competency_month])
+  @@map("partido_transactions")
+}
+
+model transaction_status_history {
+  id             BigInt              @id @default(autoincrement())
+  transaction_id BigInt
+  tenant_id      BigInt
+  from_status    transaction_status? // null na criação (sem status anterior)
+  to_status      transaction_status
+  changed_by     BigInt
+  reason         String?             @db.Text
+  created_at     DateTime            @default(now())
+
+  transaction transactions @relation(fields: [transaction_id], references: [id])
+
+  @@index([transaction_id])
+  @@index([tenant_id])
+  @@map("partido_transaction_status_history")
+}
+
+model transaction_approvals {
+  id             BigInt          @id @default(autoincrement())
+  transaction_id BigInt
+  tenant_id      BigInt
+  step_order     Int // ordem do step no fluxo de aprovação
+  required_role  String          @db.VarChar(100)
+  status         approval_status @default(pending)
+  acted_by       BigInt? // quem aprovou ou rejeitou
+  reason         String?         @db.Text
+  acted_at       DateTime?
+  created_at     DateTime        @default(now())
+
+  transaction transactions @relation(fields: [transaction_id], references: [id])
+
+  @@index([transaction_id])
+  @@index([tenant_id, status])
+  @@map("partido_transaction_approvals")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FECHAMENTO DE PERÍODO
+// ─────────────────────────────────────────────────────────────────────────────
+
+model financial_period_closings {
+  id            BigInt        @id @default(autoincrement())
+  tenant_id     BigInt
+  month         Int // 1–12
+  year          Int
+  status        period_status @default(open)
+  closed_by     BigInt?
+  closed_at     DateTime?
+  reopened_by   BigInt?
+  reopened_at   DateTime?
+  reopen_reason String?       @db.Text
+  created_at    DateTime      @default(now())
+  updated_at    DateTime?     @updatedAt
+
+  tenant tenants @relation(fields: [tenant_id], references: [id])
+
+  // Um único registro por mês/ano por tenant
+  @@unique([tenant_id, year, month])
+  @@index([tenant_id])
+  @@index([tenant_id, status])
+  @@map("partido_financial_period_closings")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LANÇAMENTOS RECORRENTES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model recurring_transactions {
+  id             BigInt              @id @default(autoincrement())
+  tenant_id      BigInt
+  person_id      BigInt
+  description    String              @db.VarChar(255)
+  amount         Decimal             @db.Decimal(12, 2)
+  type           transaction_type
+  context        transaction_context @default(diretorio)
+  category_id    BigInt
+  cost_center_id BigInt?
+  campaign_id    BigInt?
+  day_of_month   Int // dia do vencimento (1–28)
+  start_month    Int
+  start_year     Int
+  end_month      Int?
+  end_year       Int?
+  is_active      Boolean             @default(true)
+  notes          String?             @db.Text
+  created_by     BigInt?
+  created_at     DateTime            @default(now())
+  updated_at     DateTime?           @updatedAt
+  deleted_at     DateTime?
+
+  tenant      tenants              @relation(fields: [tenant_id], references: [id])
+  person      people               @relation(fields: [person_id], references: [id])
+  category    financial_categories @relation(fields: [category_id], references: [id])
+  cost_center cost_centers?        @relation("RecurringCostCenter", fields: [cost_center_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([tenant_id, is_active])
+  @@index([tenant_id, person_id])
+  @@map("partido_recurring_transactions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTRIBUIÇÕES PARTIDÁRIAS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model contributions {
+  id         BigInt                 @id @default(autoincrement())
+  tenant_id  BigInt
+  person_id  BigInt
+  amount     Decimal                @db.Decimal(12, 2)
+  frequency  contribution_frequency
+  status     contribution_status    @default(active)
+  start_date DateTime               @db.Date
+  end_date   DateTime?              @db.Date
+  notes      String?                @db.Text
+  created_by BigInt
+  created_at DateTime               @default(now())
+  updated_at DateTime?              @updatedAt
+  deleted_at DateTime?
+
+  tenant   tenants                 @relation(fields: [tenant_id], references: [id])
+  person   people                  @relation(fields: [person_id], references: [id])
+  payments contribution_payments[]
+
+  @@index([tenant_id])
+  @@index([tenant_id, status])
+  @@index([tenant_id, person_id])
+  @@map("partido_contributions")
+}
+
+model contribution_payments {
+  id              BigInt               @id @default(autoincrement())
+  contribution_id BigInt
+  tenant_id       BigInt
+  reference_month String               @db.VarChar(7)
+  amount          Decimal              @db.Decimal(12, 2)
+  amount_paid     Decimal?             @db.Decimal(12, 2)
+  status          payment_status       @default(pending)
+  due_date        DateTime             @db.Date
+  paid_at         DateTime?            @db.Date
+  payment_method  payment_method_type?
+  notes           String?              @db.Text
+  created_by      BigInt?
+  created_at      DateTime             @default(now())
+  updated_at      DateTime?            @updatedAt
+  deleted_at      DateTime?
+
+  contribution contributions @relation(fields: [contribution_id], references: [id])
+
+  @@unique([contribution_id, reference_month])
+  @@index([tenant_id])
+  @@index([contribution_id])
+  @@index([tenant_id, status])
+  @@index([tenant_id, due_date])
+  @@map("partido_contribution_payments")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GED — Gestão Eletrônica de Documentos
+// ─────────────────────────────────────────────────────────────────────────────
+
+model documents {
+  id                 BigInt               @id @default(autoincrement())
+  tenant_id          BigInt
+  name               String               @db.VarChar(255)
+  type               document_type
+  entity_type        document_entity_type
+  entity_id          BigInt?
+  current_version_id BigInt?
+  is_signed          Boolean              @default(false)
+  created_by         BigInt
+  created_at         DateTime             @default(now())
+  updated_at         DateTime?            @updatedAt
+  deleted_at         DateTime?
+
+  tenant          tenants             @relation(fields: [tenant_id], references: [id])
+  versions        document_versions[] @relation("DocumentVersions")
+  current_version document_versions?  @relation("CurrentVersion", fields: [current_version_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([tenant_id, entity_type, entity_id])
+  @@index([tenant_id, type])
+  @@index([tenant_id, deleted_at])
+  @@map("partido_documents")
+}
+
+model document_versions {
+  id          BigInt   @id @default(autoincrement())
+  document_id BigInt
+  version     Int
+  file_url    String   @db.VarChar(2048)
+  mime_type   String   @db.VarChar(100)
+  size        Int
+  is_signed   Boolean  @default(false)
+  created_by  BigInt
+  created_at  DateTime @default(now())
+
+  document   documents   @relation("DocumentVersions", fields: [document_id], references: [id])
+  current_of documents[] @relation("CurrentVersion")
+
+  @@unique([document_id, version])
+  @@index([document_id])
+  @@map("partido_document_versions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CENTROS DE CUSTO
+// ─────────────────────────────────────────────────────────────────────────────
+
+model cost_centers {
+  id          BigInt    @id @default(autoincrement())
+  tenant_id   BigInt
+  name        String    @db.VarChar(150)
+  code        String    @db.VarChar(50)
+  description String?   @db.Text
+  is_active   Boolean   @default(true)
+  created_by  BigInt?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime? @updatedAt
+  deleted_at  DateTime?
+
+  tenant                 tenants                  @relation(fields: [tenant_id], references: [id])
+  transactions           transactions[]
+  recurring_transactions recurring_transactions[] @relation("RecurringCostCenter")
+
+  @@unique([tenant_id, code])
+  @@index([tenant_id])
+  @@index([tenant_id, is_active])
+  @@index([tenant_id, name])
+  @@map("partido_cost_centers")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CATEGORIAS FINANCEIRAS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model financial_categories {
+  id         BigInt                  @id @default(autoincrement())
+  tenant_id  BigInt
+  name       String                  @db.VarChar(100)
+  type       financial_category_type
+  parent_id  BigInt?
+  is_active  Boolean                 @default(true)
+  created_by BigInt?
+  created_at DateTime                @default(now())
+  updated_at DateTime?               @updatedAt
+  deleted_at DateTime?
+
+  tenant   tenants                @relation(fields: [tenant_id], references: [id])
+  parent   financial_categories?  @relation("CategoryHierarchy", fields: [parent_id], references: [id])
+  children financial_categories[] @relation("CategoryHierarchy")
+
+  transactions           transactions[]
+  recurring_transactions recurring_transactions[]
+
+  @@unique([tenant_id, name, type])
+  @@index([tenant_id])
+  @@index([tenant_id, type])
+  @@index([tenant_id, is_active])
+  @@index([parent_id])
+  @@map("partido_financial_categories")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum transaction_type {
+  income
+  expense
+}
+
+enum transaction_status {
+  draft // rascunho — editável livremente
+  pending_approval // aguardando aprovação
+  approved // aprovado — pronto para pagamento
+  paid // pago
+  overdue // approved mas não pago no prazo
+  cancelled // cancelado
+}
+
+enum transaction_context {
+  diretorio
+  partidario
+  campanha
+}
+
+enum transaction_origin {
+  manual
+  recurring
+  donation
+  contribution
+  imported
+}
+
+enum approval_status {
+  pending
+  approved
+  rejected
+}
+
+enum period_status {
+  open
+  closed
+}
+
+enum contribution_frequency {
+  monthly
+  quarterly
+  annual
+}
+
+enum contribution_status {
+  active
+  suspended
+  cancelled
+}
+
+enum payment_status {
+  pending
+  paid
+  overdue
+}
+
+enum payment_method_type {
+  pix
+  bank_transfer
+  cash
+  boleto
+  card
+}
+
+enum document_type {
+  ata
+  contrato
+  pessoal
+  financeiro
+}
+
+enum document_entity_type {
+  people
+  financial
+  campaign
+  general
+}
+
+enum financial_category_type {
+  income
+  expense
+  both
+}
+
+enum people_type {
+  filiado
+  fornecedor
+  funcionario
+  candidato
+  doador
+  voluntario
+}
+
+enum people_status {
+  active
+  inactive
+}
+
+enum tenants_status {
+  active
+  inactive
+}
+
+enum users_status {
+  active
+  inactive
+  blocked
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRM Enums
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum interaction_type {
+  call
+  email
+  whatsapp
+  meeting
+  visit
+  other
+}
+
+enum interaction_direction {
+  inbound
+  outbound
+}
+
+enum task_status {
+  pending
+  in_progress
+  done
+  cancelled
+}
+
+enum task_priority {
+  low
+  medium
+  high
+}
+
+enum notification_type {
+  task_assigned
+  task_overdue
+  pipeline_moved
+  event_reminder
+}
+
+enum event_attendance_status {
+  invited
+  confirmed
+  attended
+  absent
+}
+
+enum import_status {
+  processing
+  done
+  failed
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRM — Tags e Segmentação
+// ─────────────────────────────────────────────────────────────────────────────
+
+model tags {
+  id         BigInt    @id @default(autoincrement())
+  tenant_id  BigInt
+  name       String    @db.VarChar(100)
+  color      String    @db.VarChar(7) // hex #RRGGBB
+  created_by BigInt
+  created_at DateTime  @default(now())
+  deleted_at DateTime?
+
+  tenant      tenants       @relation(fields: [tenant_id], references: [id])
+  people_tags people_tags[]
+
+  @@unique([tenant_id, name])
+  @@index([tenant_id])
+  @@map("partido_crm_tags")
+}
+
+model people_tags {
+  person_id BigInt
+  tag_id    BigInt
+  tenant_id BigInt
+
+  person people  @relation(fields: [person_id], references: [id])
+  tag    tags    @relation(fields: [tag_id], references: [id])
+  tenant tenants @relation(fields: [tenant_id], references: [id])
+
+  @@id([person_id, tag_id])
+  @@index([tenant_id])
+  @@index([tag_id])
+  @@map("partido_crm_people_tags")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRM — Pipeline de Recrutamento
+// ─────────────────────────────────────────────────────────────────────────────
+
+model pipeline_stages {
+  id                 BigInt    @id @default(autoincrement())
+  tenant_id          BigInt
+  name               String    @db.VarChar(100)
+  color              String    @db.VarChar(7)
+  order              Int
+  is_default         Boolean   @default(false)
+  is_final           Boolean   @default(false)
+  target_people_type String?   @db.VarChar(50)
+  created_by         BigInt
+  created_at         DateTime  @default(now())
+  updated_at         DateTime? @updatedAt
+  deleted_at         DateTime?
+
+  tenant           tenants            @relation(fields: [tenant_id], references: [id])
+  pipeline_entries pipeline_entries[]
+
+  @@unique([tenant_id, name])
+  @@index([tenant_id])
+  @@index([tenant_id, order])
+  @@map("partido_crm_pipeline_stages")
+}
+
+model pipeline_entries {
+  id         BigInt    @id @default(autoincrement())
+  tenant_id  BigInt
+  person_id  BigInt
+  stage_id   BigInt
+  entered_at DateTime  @default(now())
+  exited_at  DateTime?
+  notes      String?   @db.Text
+  created_by BigInt
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
+
+  tenant tenants         @relation(fields: [tenant_id], references: [id])
+  person people          @relation(fields: [person_id], references: [id])
+  stage  pipeline_stages @relation(fields: [stage_id], references: [id])
+
+  @@index([tenant_id, person_id])
+  @@index([tenant_id, stage_id])
+  @@map("partido_crm_pipeline_entries")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRM — Interações (append-only: nunca editar, só soft delete)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model interactions {
+  id          BigInt                @id @default(autoincrement())
+  tenant_id   BigInt
+  person_id   BigInt
+  type        interaction_type
+  direction   interaction_direction
+  summary     String                @db.Text
+  occurred_at DateTime
+  created_by  BigInt
+  created_at  DateTime              @default(now())
+  deleted_at  DateTime?
+
+  tenant tenants @relation(fields: [tenant_id], references: [id])
+  person people  @relation(fields: [person_id], references: [id])
+
+  @@index([tenant_id, person_id])
+  @@index([tenant_id, occurred_at])
+  @@index([tenant_id, type])
+  @@map("partido_crm_interactions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRM — Tarefas
+// ─────────────────────────────────────────────────────────────────────────────
+
+model tasks {
+  id           BigInt        @id @default(autoincrement())
+  tenant_id    BigInt
+  person_id    BigInt?
+  title        String        @db.VarChar(255)
+  description  String?       @db.Text
+  due_date     DateTime      @db.Date
+  status       task_status   @default(pending)
+  priority     task_priority @default(medium)
+  assigned_to  BigInt
+  created_by   BigInt
+  created_at   DateTime      @default(now())
+  updated_at   DateTime?     @updatedAt
+  completed_at DateTime?
+  deleted_at   DateTime?
+
+  tenant   tenants @relation(fields: [tenant_id], references: [id])
+  person   people? @relation(fields: [person_id], references: [id])
+  assignee users   @relation("TaskAssignee", fields: [assigned_to], references: [id])
+
+  @@index([tenant_id, assigned_to, status])
+  @@index([tenant_id, due_date, status])
+  @@index([tenant_id, person_id])
+  @@map("partido_crm_tasks")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRM — Notificações In-App
+// ─────────────────────────────────────────────────────────────────────────────
+
+model notifications {
+  id          BigInt            @id @default(autoincrement())
+  tenant_id   BigInt
+  user_id     BigInt
+  type        notification_type
+  title       String            @db.VarChar(255)
+  message     String            @db.Text
+  read        Boolean           @default(false)
+  entity_type String?           @db.VarChar(50)
+  entity_id   BigInt?
+  created_at  DateTime          @default(now())
+
+  tenant tenants @relation(fields: [tenant_id], references: [id])
+  user   users   @relation(fields: [user_id], references: [id])
+
+  @@index([tenant_id, user_id, read])
+  @@index([tenant_id, user_id])
+  @@map("partido_crm_notifications")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRM — Eventos e Presença
+// ─────────────────────────────────────────────────────────────────────────────
+
+model events {
+  id          BigInt    @id @default(autoincrement())
+  tenant_id   BigInt
+  name        String    @db.VarChar(255)
+  description String?   @db.Text
+  location    String?   @db.VarChar(255)
+  start_at    DateTime
+  end_at      DateTime?
+  is_active   Boolean   @default(true)
+  created_by  BigInt
+  created_at  DateTime  @default(now())
+  updated_at  DateTime? @updatedAt
+  deleted_at  DateTime?
+
+  tenant      tenants             @relation(fields: [tenant_id], references: [id])
+  attendances event_attendances[]
+
+  @@index([tenant_id, start_at])
+  @@index([tenant_id, is_active])
+  @@map("partido_crm_events")
+}
+
+model event_attendances {
+  id            BigInt                  @id @default(autoincrement())
+  event_id      BigInt
+  person_id     BigInt
+  tenant_id     BigInt
+  status        event_attendance_status @default(invited)
+  registered_at DateTime                @default(now())
+  updated_at    DateTime?               @updatedAt
+
+  event  events  @relation(fields: [event_id], references: [id])
+  person people  @relation(fields: [person_id], references: [id])
+  tenant tenants @relation(fields: [tenant_id], references: [id])
+
+  @@unique([event_id, person_id])
+  @@index([event_id])
+  @@index([tenant_id, person_id])
+  @@map("partido_crm_event_attendances")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRM — Device Tokens FCM (Push Notifications Mobile)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model device_tokens {
+  id         BigInt    @id @default(autoincrement())
+  tenant_id  BigInt
+  user_id    BigInt
+  token      String    @db.VarChar(512)
+  platform   String    @db.VarChar(20)
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
+
+  tenant tenants @relation(fields: [tenant_id], references: [id])
+  user   users   @relation(fields: [user_id], references: [id])
+
+  @@unique([user_id, token])
+  @@index([user_id])
+  @@map("partido_crm_device_tokens")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRM — Importação CSV
+// ─────────────────────────────────────────────────────────────────────────────
+
+model crm_imports {
+  id         BigInt        @id @default(autoincrement())
+  tenant_id  BigInt
+  filename   String        @db.VarChar(255)
+  status     import_status @default(processing)
+  total      Int           @default(0)
+  imported   Int           @default(0)
+  skipped    Int           @default(0)
+  errors     Json?
+  created_by BigInt
+  created_at DateTime      @default(now())
+  updated_at DateTime?     @updatedAt
+
+  tenant tenants @relation(fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([tenant_id, status])
+  @@map("partido_crm_imports")
+}
