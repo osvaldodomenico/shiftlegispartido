@@ -51,6 +51,19 @@ model tenants {
   event_attendances         event_attendances[]
   device_tokens             device_tokens[]
   crm_imports               crm_imports[]
+  // Electoral + Party relations
+  elections                 elections[]
+  campaigns                 campaigns[]
+  campaign_team             campaign_team[]
+  campaign_contracts        campaign_contracts[]
+  campaign_contract_payments campaign_contract_payments[]
+  campaign_schedule         campaign_schedule[]
+  tse_reports               tse_reports[]
+  party_chapters            party_chapters[]
+  chapter_members           chapter_members[]
+  party_organs              party_organs[]
+  organ_members             organ_members[]
+  mandates                  mandates[]
 
   @@map("partido_tenants")
 }
@@ -64,12 +77,14 @@ model users {
   password_hash        String?      @db.VarChar(255)
   two_factor_enabled   Boolean      @default(false)
   status               users_status @default(active)
-  last_login_at        DateTime?
-  last_password_change DateTime?
-  token_version        Int          @default(0)
-  created_at           DateTime     @default(now())
-  updated_at           DateTime?    @updatedAt
-  deleted_at           DateTime?
+  last_login_at            DateTime?
+  last_password_change     DateTime?
+  token_version            Int          @default(0)
+  refresh_token_hash       String?      @db.VarChar(255)
+  refresh_token_expires_at DateTime?
+  created_at               DateTime     @default(now())
+  updated_at               DateTime?    @updatedAt
+  deleted_at               DateTime?
 
   tenant         tenants         @relation(fields: [tenant_id], references: [id])
   user_roles     user_roles[]
@@ -116,6 +131,13 @@ model people {
   interactions           interactions[]
   tasks                  tasks[]
   event_attendances      event_attendances[]
+  // Electoral + Party back-relations
+  campaign_candidate     campaigns[]        @relation("CampaignCandidate")
+  campaign_team          campaign_team[]
+  campaign_contracts_vendor campaign_contracts[] @relation("ContractVendor")
+  chapter_members        chapter_members[]
+  organ_members          organ_members[]
+  mandates               mandates[]
 
   @@unique([tenant_id, cpf_hash])
   @@index([tenant_id])
@@ -239,6 +261,7 @@ model transactions {
   person      people               @relation(fields: [person_id], references: [id])
   category    financial_categories @relation(fields: [category_id], references: [id])
   cost_center cost_centers?        @relation(fields: [cost_center_id], references: [id])
+  campaign    campaigns?           @relation(fields: [campaign_id], references: [id])
 
   status_history transaction_status_history[]
   approvals      transaction_approvals[]
@@ -350,6 +373,7 @@ model recurring_transactions {
   person      people               @relation(fields: [person_id], references: [id])
   category    financial_categories @relation(fields: [category_id], references: [id])
   cost_center cost_centers?        @relation("RecurringCostCenter", fields: [cost_center_id], references: [id])
+  campaign    campaigns?           @relation(fields: [campaign_id], references: [id])
 
   @@index([tenant_id])
   @@index([tenant_id, is_active])
@@ -593,6 +617,11 @@ enum document_type {
   contrato
   pessoal
   financeiro
+  procuracao
+  declaracao
+  estatuto
+  regimento
+  pesquisa
 }
 
 enum document_entity_type {
@@ -600,6 +629,11 @@ enum document_entity_type {
   financial
   campaign
   general
+  election
+  mandate
+  chapter
+  organ
+  contract
 }
 
 enum financial_category_type {
@@ -935,4 +969,442 @@ model crm_imports {
   @@index([tenant_id])
   @@index([tenant_id, status])
   @@map("partido_crm_imports")
+}
+
+// =============================================================================
+// Electoral + Party Enums
+// =============================================================================
+
+enum election_scope {
+  municipal
+  estadual
+  federal
+  distrital
+}
+
+enum campaign_status {
+  planning
+  active
+  suspended
+  finished
+}
+
+enum team_member_role {
+  coordenador_geral
+  coordenador_area
+  assessor
+  cabo_eleitoral
+  voluntario
+  motorista
+  seguranca
+  comunicacao
+  juridico
+  financeiro
+  outros
+}
+
+enum team_member_payment_type {
+  voluntario
+  remunerado
+  prestador
+}
+
+enum contract_status {
+  draft
+  active
+  completed
+  cancelled
+}
+
+enum schedule_event_type {
+  comicio
+  caminhada
+  reuniao
+  corpo_a_corpo
+  entrevista
+  debate
+  panfletagem
+  visita
+  evento_social
+  outro
+}
+
+enum schedule_event_status {
+  planned
+  confirmed
+  done
+  cancelled
+}
+
+enum tse_report_type {
+  parcial
+  final
+  suplementar
+}
+
+enum tse_report_status {
+  draft
+  submitted
+  approved
+  rejected
+  rectified
+}
+
+enum chapter_level {
+  nacional
+  estadual
+  municipal
+  zonal
+  setorial
+}
+
+enum mandate_status {
+  active
+  finished
+  renounced
+  revoked
+  suspended
+}
+
+// =============================================================================
+// Electoral — Eleições
+// =============================================================================
+
+model elections {
+  id            BigInt         @id @default(autoincrement())
+  tenant_id     BigInt
+  year          Int
+  scope         election_scope
+  name          String         @db.VarChar(255)
+  description   String?        @db.Text
+  election_date DateTime?      @db.Date
+  runoff_date   DateTime?      @db.Date
+  is_active     Boolean        @default(true)
+  created_by    BigInt
+  created_at    DateTime       @default(now())
+  updated_at    DateTime?      @updatedAt
+  deleted_at    DateTime?
+
+  tenant    tenants     @relation(fields: [tenant_id], references: [id])
+  campaigns campaigns[]
+
+  @@index([tenant_id, year])
+  @@index([tenant_id, scope])
+  @@map("partido_elections")
+}
+
+// =============================================================================
+// Electoral — Campanhas Eleitorais
+// =============================================================================
+
+model campaigns {
+  id           BigInt          @id @default(autoincrement())
+  tenant_id    BigInt
+  election_id  BigInt
+  person_id    BigInt          // candidato (people.type = candidato)
+  name         String          @db.VarChar(255)
+  position     String          @db.VarChar(100)
+  number       String?         @db.VarChar(20)
+  status       campaign_status @default(planning)
+  budget_limit Decimal?        @db.Decimal(14, 2)
+  start_date   DateTime?       @db.Date
+  end_date     DateTime?       @db.Date
+  description  String?         @db.Text
+  created_by   BigInt
+  created_at   DateTime        @default(now())
+  updated_at   DateTime?       @updatedAt
+  deleted_at   DateTime?
+
+  tenant                 tenants                      @relation(fields: [tenant_id], references: [id])
+  election               elections                    @relation(fields: [election_id], references: [id])
+  candidate              people                       @relation("CampaignCandidate", fields: [person_id], references: [id])
+  transactions           transactions[]
+  recurring_transactions recurring_transactions[]
+  campaign_team          campaign_team[]
+  campaign_contracts     campaign_contracts[]
+  campaign_schedule      campaign_schedule[]
+  tse_reports            tse_reports[]
+  mandates               mandates[]
+
+  @@index([tenant_id, election_id])
+  @@index([tenant_id, status])
+  @@map("partido_campaigns")
+}
+
+// =============================================================================
+// Electoral — Equipe da Campanha
+// =============================================================================
+
+model campaign_team {
+  id           BigInt                   @id @default(autoincrement())
+  tenant_id    BigInt
+  campaign_id  BigInt
+  person_id    BigInt
+  role         team_member_role
+  payment_type team_member_payment_type @default(voluntario)
+  salary       Decimal?                 @db.Decimal(12, 2)
+  start_date   DateTime                 @db.Date
+  end_date     DateTime?                @db.Date
+  notes        String?                  @db.Text
+  created_by   BigInt
+  created_at   DateTime                 @default(now())
+  updated_at   DateTime?                @updatedAt
+  deleted_at   DateTime?
+
+  tenant   tenants   @relation(fields: [tenant_id], references: [id])
+  campaign campaigns @relation(fields: [campaign_id], references: [id])
+  person   people    @relation(fields: [person_id], references: [id])
+
+  @@unique([campaign_id, person_id])
+  @@index([tenant_id, campaign_id])
+  @@map("partido_campaign_team")
+}
+
+// =============================================================================
+// Electoral — Contratos de Campanha (Fornecedores)
+// =============================================================================
+
+model campaign_contracts {
+  id          BigInt          @id @default(autoincrement())
+  tenant_id   BigInt
+  campaign_id BigInt
+  person_id   BigInt          // fornecedor (people.type = fornecedor)
+  description String          @db.VarChar(255)
+  object      String          @db.Text
+  value       Decimal         @db.Decimal(12, 2)
+  status      contract_status @default(draft)
+  start_date  DateTime?       @db.Date
+  end_date    DateTime?       @db.Date
+  tse_code    String?         @db.VarChar(20)
+  created_by  BigInt
+  created_at  DateTime        @default(now())
+  updated_at  DateTime?       @updatedAt
+  deleted_at  DateTime?
+
+  tenant   tenants   @relation(fields: [tenant_id], references: [id])
+  campaign campaigns @relation(fields: [campaign_id], references: [id])
+  vendor   people    @relation("ContractVendor", fields: [person_id], references: [id])
+  payments campaign_contract_payments[]
+
+  @@index([tenant_id, campaign_id])
+  @@index([tenant_id, status])
+  @@map("partido_campaign_contracts")
+}
+
+model campaign_contract_payments {
+  id             BigInt    @id @default(autoincrement())
+  tenant_id      BigInt
+  contract_id    BigInt
+  transaction_id BigInt?
+  amount         Decimal   @db.Decimal(12, 2)
+  due_date       DateTime  @db.Date
+  paid_at        DateTime? @db.Date
+  notes          String?   @db.Text
+  created_by     BigInt
+  created_at     DateTime  @default(now())
+
+  tenant   tenants            @relation(fields: [tenant_id], references: [id])
+  contract campaign_contracts @relation(fields: [contract_id], references: [id])
+
+  @@index([tenant_id, contract_id])
+  @@map("partido_campaign_contract_payments")
+}
+
+// =============================================================================
+// Electoral — Agenda da Campanha
+// =============================================================================
+
+model campaign_schedule {
+  id          BigInt                @id @default(autoincrement())
+  tenant_id   BigInt
+  campaign_id BigInt
+  title       String                @db.VarChar(255)
+  type        schedule_event_type
+  status      schedule_event_status @default(planned)
+  location    String?               @db.VarChar(255)
+  start_at    DateTime
+  end_at      DateTime?
+  notes       String?               @db.Text
+  created_by  BigInt
+  created_at  DateTime              @default(now())
+  updated_at  DateTime?             @updatedAt
+  deleted_at  DateTime?
+
+  tenant   tenants   @relation(fields: [tenant_id], references: [id])
+  campaign campaigns @relation(fields: [campaign_id], references: [id])
+
+  @@index([tenant_id, campaign_id])
+  @@index([tenant_id, start_at])
+  @@map("partido_campaign_schedule")
+}
+
+// =============================================================================
+// Electoral — Prestação de Contas TSE
+// =============================================================================
+
+model tse_codes {
+  id          Int     @id @default(autoincrement())
+  code        String  @unique @db.VarChar(20)
+  description String  @db.VarChar(255)
+  type        String  @db.VarChar(10) // "income" | "expense"
+  is_active   Boolean @default(true)
+
+  report_items tse_report_items[]
+
+  @@map("partido_tse_codes")
+}
+
+model tse_reports {
+  id           BigInt            @id @default(autoincrement())
+  tenant_id    BigInt
+  campaign_id  BigInt
+  type         tse_report_type
+  status       tse_report_status @default(draft)
+  reference    String            @db.VarChar(50)
+  period_start DateTime          @db.Date
+  period_end   DateTime          @db.Date
+  submitted_at DateTime?
+  tse_protocol String?           @db.VarChar(100)
+  notes        String?           @db.Text
+  created_by   BigInt
+  created_at   DateTime          @default(now())
+  updated_at   DateTime?         @updatedAt
+
+  tenant   tenants            @relation(fields: [tenant_id], references: [id])
+  campaign campaigns          @relation(fields: [campaign_id], references: [id])
+  items    tse_report_items[]
+
+  @@index([tenant_id, campaign_id])
+  @@map("partido_tse_reports")
+}
+
+model tse_report_items {
+  id             BigInt   @id @default(autoincrement())
+  report_id      BigInt
+  transaction_id BigInt
+  tse_code_id    Int
+  notes          String?  @db.Text
+  created_at     DateTime @default(now())
+
+  report   tse_reports @relation(fields: [report_id], references: [id])
+  tse_code tse_codes   @relation(fields: [tse_code_id], references: [id])
+
+  @@index([report_id])
+  @@map("partido_tse_report_items")
+}
+
+// =============================================================================
+// Estrutura Partidária — Diretórios (Seções Locais)
+// =============================================================================
+
+model party_chapters {
+  id         BigInt        @id @default(autoincrement())
+  tenant_id  BigInt
+  name       String        @db.VarChar(255)
+  level      chapter_level
+  state      String?       @db.VarChar(2)
+  city       String?       @db.VarChar(100)
+  zone       String?       @db.VarChar(100)
+  parent_id  BigInt?
+  is_active  Boolean       @default(true)
+  created_by BigInt
+  created_at DateTime      @default(now())
+  updated_at DateTime?     @updatedAt
+  deleted_at DateTime?
+
+  tenant   tenants          @relation(fields: [tenant_id], references: [id])
+  parent   party_chapters?  @relation("ChapterHierarchy", fields: [parent_id], references: [id])
+  children party_chapters[] @relation("ChapterHierarchy")
+  members  chapter_members[]
+
+  @@index([tenant_id, level])
+  @@index([tenant_id, parent_id])
+  @@map("partido_party_chapters")
+}
+
+model chapter_members {
+  id         BigInt    @id @default(autoincrement())
+  chapter_id BigInt
+  person_id  BigInt
+  tenant_id  BigInt
+  role       String?   @db.VarChar(100)
+  joined_at  DateTime  @db.Date
+  left_at    DateTime? @db.Date
+
+  chapter party_chapters @relation(fields: [chapter_id], references: [id])
+  person  people         @relation(fields: [person_id], references: [id])
+  tenant  tenants        @relation(fields: [tenant_id], references: [id])
+
+  @@unique([chapter_id, person_id])
+  @@index([tenant_id])
+  @@map("partido_chapter_members")
+}
+
+// =============================================================================
+// Estrutura Partidária — Órgãos Partidários
+// =============================================================================
+
+model party_organs {
+  id          BigInt    @id @default(autoincrement())
+  tenant_id   BigInt
+  name        String    @db.VarChar(255)
+  description String?   @db.Text
+  is_active   Boolean   @default(true)
+  created_by  BigInt
+  created_at  DateTime  @default(now())
+  updated_at  DateTime? @updatedAt
+  deleted_at  DateTime?
+
+  tenant  tenants        @relation(fields: [tenant_id], references: [id])
+  members organ_members[]
+
+  @@index([tenant_id])
+  @@map("partido_party_organs")
+}
+
+model organ_members {
+  id        BigInt    @id @default(autoincrement())
+  organ_id  BigInt
+  person_id BigInt
+  tenant_id BigInt
+  role      String?   @db.VarChar(100)
+  joined_at DateTime  @db.Date
+  left_at   DateTime? @db.Date
+
+  organ  party_organs @relation(fields: [organ_id], references: [id])
+  person people       @relation(fields: [person_id], references: [id])
+  tenant tenants      @relation(fields: [tenant_id], references: [id])
+
+  @@unique([organ_id, person_id])
+  @@index([tenant_id])
+  @@map("partido_organ_members")
+}
+
+// =============================================================================
+// Mandatos
+// =============================================================================
+
+model mandates {
+  id           BigInt         @id @default(autoincrement())
+  tenant_id    BigInt
+  person_id    BigInt
+  campaign_id  BigInt?
+  position     String         @db.VarChar(100)
+  jurisdiction String         @db.VarChar(255)
+  start_date   DateTime       @db.Date
+  end_date     DateTime?      @db.Date
+  status       mandate_status @default(active)
+  notes        String?        @db.Text
+  created_by   BigInt
+  created_at   DateTime       @default(now())
+  updated_at   DateTime?      @updatedAt
+  deleted_at   DateTime?
+
+  tenant   tenants    @relation(fields: [tenant_id], references: [id])
+  person   people     @relation(fields: [person_id], references: [id])
+  campaign campaigns? @relation(fields: [campaign_id], references: [id])
+
+  @@index([tenant_id, person_id])
+  @@index([tenant_id, status])
+  @@map("partido_mandates")
 }
