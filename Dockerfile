@@ -18,4 +18,4 @@ RUN npm prune --omit=dev
 EXPOSE 3000
 
 # Sincroniza schema (só cria tabelas novas com prefixo partido_, nunca destrói) e sobe o app
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss=false --skip-generate && node dist/main"]
+CMD ["sh", "-c", "echo '=== DIST CONTENTS ===' && ls -la /app/dist/ 2>&1 || echo 'NO DIST DIR' && npx prisma db push --accept-data-loss=false --skip-generate && node dist/main"]
