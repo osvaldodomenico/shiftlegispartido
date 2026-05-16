@@ -1,4 +1,4 @@
-FROM node:22-alpine AS builder
+FROM node:22-alpine
 
 RUN apk add --no-cache openssl
 
@@ -8,23 +8,12 @@ COPY backend/package*.json ./
 RUN npm ci
 
 COPY backend/ .
+
 RUN npx prisma generate
-RUN npm run build
 
-# ─── Production image ───────────────────────────────────────────────
-FROM node:22-alpine AS runner
+RUN npm run build && echo "=== BUILD OK ===" && ls -la dist/
 
-RUN apk add --no-cache openssl
-
-WORKDIR /app
-
-COPY backend/package*.json ./
-RUN npm ci --omit=dev
-
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY backend/prisma ./prisma
+RUN npm prune --omit=dev
 
 EXPOSE 3000
 
