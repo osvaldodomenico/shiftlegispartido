@@ -11,7 +11,16 @@ import { CostCentersModule } from './modules/cost-centers/cost-centers.module';
 import { FinancialPeriodClosingsModule } from './modules/financial-period-closings/financial-period-closings.module';
 import { RecurringTransactionsModule } from './modules/recurring-transactions/recurring-transactions.module';
 import { CompanyModule } from './modules/company/company.module';
+// CRM modules
 import { TagsModule } from './modules/crm/tags/tags.module';
+import { PipelineModule } from './modules/crm/pipeline/pipeline.module';
+import { InteractionsModule } from './modules/crm/interactions/interactions.module';
+import { TasksModule } from './modules/crm/tasks/tasks.module';
+import { NotificationsModule } from './modules/crm/notifications/notifications.module';
+import { EventsModule } from './modules/crm/events/events.module';
+import { DeviceTokensModule } from './modules/crm/device-tokens/device-tokens.module';
+import { CrmImportsModule } from './modules/crm/crm-import/crm-import.module';
+import { CrmDashboardModule } from './modules/crm/crm-dashboard/crm-dashboard.module';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { PermissionsService } from './common/services/permissions.service';
@@ -25,7 +34,29 @@ import { PrismaService } from './database/prisma.service';
  * Rotas públicas (@Public) são ignoradas por ambos os guards.
  */
 @Module({
-  imports: [AuthModule, UsersModule, PeopleModule, FinancialModule, DocumentsModule, ContributionsModule, FinancialCategoriesModule, CostCentersModule, FinancialPeriodClosingsModule, RecurringTransactionsModule, CompanyModule, TagsModule],
+  imports: [
+    AuthModule,
+    UsersModule,
+    PeopleModule,
+    FinancialModule,
+    DocumentsModule,
+    ContributionsModule,
+    FinancialCategoriesModule,
+    CostCentersModule,
+    FinancialPeriodClosingsModule,
+    RecurringTransactionsModule,
+    CompanyModule,
+    // CRM
+    TagsModule,
+    PipelineModule,
+    InteractionsModule,
+    TasksModule,
+    NotificationsModule,
+    EventsModule,
+    DeviceTokensModule,
+    CrmImportsModule,
+    CrmDashboardModule,
+  ],
   providers: [
     PrismaService,
     PermissionsService,

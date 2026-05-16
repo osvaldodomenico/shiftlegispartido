@@ -11,7 +11,6 @@ const TAG_SAFE_SELECT = {
   name: true,
   color: true,
   created_at: true,
-  updated_at: true,
 };
 
 @Injectable()
@@ -19,14 +18,18 @@ export class TagsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateTagDto, actor: JwtPayload) {
+    const tid = BigInt(actor.tenantId);
+    const uid = BigInt(actor.userId);
+
     const existing = await this.prisma.tags.findFirst({
-      where: { tenant_id: actor.tenantId, name: dto.name, deleted_at: null },
+      where: { tenant_id: tid, name: dto.name, deleted_at: null },
     });
     if (existing) throw new ConflictException('Tag com esse nome já existe');
 
     const tag = await this.prisma.tags.create({
       data: {
-        tenant_id: actor.tenantId,
+        tenant_id: tid,
+        created_by: uid,
         name: dto.name,
         color: dto.color ?? '#6366f1',
       },
@@ -35,78 +38,86 @@ export class TagsService {
 
     await this.prisma.audit_logs.create({
       data: {
-        tenant_id: actor.tenantId,
-        user_id: actor.userId,
+        tenant_id: tid,
+        user_id: uid,
         action: 'CREATE',
         entity: 'tags',
         entity_id: tag.id,
-        payload: JSON.stringify(dto),
+        metadata: { data: JSON.stringify(dto) },
       },
     });
 
-    return { success: true, data: tag, message: 'Tag criada com sucesso' };
+    return { success: true, data: { ...tag, id: tag.id.toString(), tenant_id: tag.id.toString() }, message: 'Tag criada com sucesso' };
   }
 
-  async findAll(tenantId: string) {
+  async findAll(tenantId: number) {
+    const tid = BigInt(tenantId);
     const tags = await this.prisma.tags.findMany({
-      where: { tenant_id: tenantId, deleted_at: null },
+      where: { tenant_id: tid, deleted_at: null },
       select: TAG_SAFE_SELECT,
       orderBy: { name: 'asc' },
     });
-    return { success: true, data: tags };
+    return { success: true, data: tags.map((t) => ({ ...t, id: t.id.toString(), tenant_id: t.tenant_id.toString() })) };
   }
 
   async update(id: string, dto: UpdateTagDto, actor: JwtPayload) {
-    // Verifica duplicata de nome (exceto a própria tag)
+    const tid = BigInt(actor.tenantId);
+    const uid = BigInt(actor.userId);
+    const tagId = BigInt(id);
+
     if (dto.name) {
       const conflict = await this.prisma.tags.findFirst({
         where: {
-          tenant_id: actor.tenantId,
+          tenant_id: tid,
           name: dto.name,
           deleted_at: null,
-          NOT: { id },
+          NOT: { id: tagId },
         },
       });
       if (conflict) throw new ConflictException('Tag com esse nome já existe');
     }
 
     const count = await this.prisma.tags.updateMany({
-      where: { id, tenant_id: actor.tenantId, deleted_at: null },
-      data: { ...dto },
+      where: { id: tagId, tenant_id: tid, deleted_at: null },
+      data: { ...(dto.name && { name: dto.name }), ...(dto.color && { color: dto.color }) },
     });
     if (count.count === 0) throw new NotFoundException('Tag não encontrada');
 
-    const updated = await this.prisma.tags.findUnique({ where: { id }, select: TAG_SAFE_SELECT });
+    const updated = await this.prisma.tags.findUnique({ where: { id: tagId }, select: TAG_SAFE_SELECT });
 
     await this.prisma.audit_logs.create({
       data: {
-        tenant_id: actor.tenantId,
-        user_id: actor.userId,
+        tenant_id: tid,
+        user_id: uid,
         action: 'UPDATE',
         entity: 'tags',
-        entity_id: id,
-        payload: JSON.stringify(dto),
+        entity_id: tagId,
+        metadata: { data: JSON.stringify(dto) },
       },
     });
 
-    return { success: true, data: updated, message: 'Tag atualizada' };
+    return { success: true, data: updated ? { ...updated, id: updated.id.toString(), tenant_id: updated.tenant_id.toString() } : null, message: 'Tag atualizada' };
   }
 
   async remove(id: string, actor: JwtPayload) {
+    const tid = BigInt(actor.tenantId);
+    const uid = BigInt(actor.userId);
+    const tagId = BigInt(id);
+
     const count = await this.prisma.tags.updateMany({
-      where: { id, tenant_id: actor.tenantId, deleted_at: null },
+      where: { id: tagId, tenant_id: tid, deleted_at: null },
       data: { deleted_at: new Date() },
     });
     if (count.count === 0) throw new NotFoundException('Tag não encontrada');
 
     await this.prisma.audit_logs.create({
       data: {
-        tenant_id: actor.tenantId,
-        user_id: actor.userId,
+        tenant_id: tid,
+        user_id: uid,
         action: 'DELETE',
         entity: 'tags',
-        entity_id: id,
-        payload: null,
+        entity_id: tagId,
+        metadata: null,
       },
     });
 
@@ -114,21 +125,25 @@ export class TagsService {
   }
 
   async attachTags(peopleId: string, dto: AttachTagsDto, actor: JwtPayload) {
+    const tid = BigInt(actor.tenantId);
+    const uid = BigInt(actor.userId);
+    const personId = BigInt(peopleId);
+
     // Valida que todas as tags pertencem ao tenant
     const tags = await this.prisma.tags.findMany({
-      where: { id: { in: dto.tag_ids }, tenant_id: actor.tenantId, deleted_at: null },
+      where: { id: { in: dto.tag_ids.map((id) => BigInt(id)) }, tenant_id: tid, deleted_at: null },
       select: { id: true },
     });
     if (tags.length !== dto.tag_ids.length) {
       throw new NotFoundException('Uma ou mais tags não encontradas');
     }
 
-    // Upsert para evitar duplicatas
+    // Upsert para evitar duplicatas — people_tags usa (person_id, tag_id) como PK composta
     await Promise.all(
       dto.tag_ids.map((tagId) =>
         this.prisma.people_tags.upsert({
-          where: { people_id_tag_id: { people_id: peopleId, tag_id: tagId } },
-          create: { tenant_id: actor.tenantId, people_id: peopleId, tag_id: tagId },
+          where: { person_id_tag_id: { person_id: personId, tag_id: BigInt(tagId) } },
+          create: { tenant_id: tid, person_id: personId, tag_id: BigInt(tagId) },
           update: {},
         }),
       ),
@@ -136,12 +151,12 @@ export class TagsService {
 
     await this.prisma.audit_logs.create({
       data: {
-        tenant_id: actor.tenantId,
-        user_id: actor.userId,
+        tenant_id: tid,
+        user_id: uid,
         action: 'CREATE',
         entity: 'people_tags',
-        entity_id: peopleId,
-        payload: JSON.stringify(dto),
+        entity_id: personId,
+        metadata: { data: JSON.stringify(dto) },
       },
     });
 
@@ -149,21 +164,29 @@ export class TagsService {
   }
 
   async detachTag(peopleId: string, tagId: string, actor: JwtPayload) {
+    const tid = BigInt(actor.tenantId);
+    const uid = BigInt(actor.userId);
+    const personId = BigInt(peopleId);
+    const tId = BigInt(tagId);
+
     const link = await this.prisma.people_tags.findFirst({
-      where: { people_id: peopleId, tag_id: tagId, tenant_id: actor.tenantId },
+      where: { person_id: personId, tag_id: tId, tenant_id: tid },
     });
     if (!link) throw new NotFoundException('Vínculo não encontrado');
 
-    await this.prisma.people_tags.delete({ where: { id: link.id } });
+    // Delete por PK composta (person_id, tag_id)
+    await this.prisma.people_tags.delete({
+      where: { person_id_tag_id: { person_id: personId, tag_id: tId } },
+    });
 
     await this.prisma.audit_logs.create({
       data: {
-        tenant_id: actor.tenantId,
-        user_id: actor.userId,
+        tenant_id: tid,
+        user_id: uid,
         action: 'DELETE',
         entity: 'people_tags',
-        entity_id: link.id,
-        payload: null,
+        entity_id: personId,
+        metadata: null,
       },
     });
 

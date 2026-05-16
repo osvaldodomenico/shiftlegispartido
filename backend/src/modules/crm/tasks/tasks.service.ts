@@ -92,8 +92,8 @@ export class TasksService {
         user_id: userId,
         action: 'CREATE',
         entity: 'tasks',
-        entity_id: String(task.id),
-        payload: JSON.stringify(dto),
+        entity_id: task.id,
+        metadata: { data: JSON.stringify(dto) },
       },
     });
 
@@ -106,7 +106,7 @@ export class TasksService {
 
   // Lista tarefas do tenant com filtros opcionais
   async findAll(
-    tenantId: string,
+    tenantId: string | number,
     filters: {
       assigned_to?: string;
       status?: task_status;
@@ -129,7 +129,7 @@ export class TasksService {
   }
 
   // Busca uma tarefa por ID com isolamento de tenant e soft delete
-  async findOne(id: string, tenantId: string) {
+  async findOne(id: string, tenantId: string | number) {
     const task = await this.prisma.tasks.findFirst({
       where: {
         id: BigInt(id),
@@ -215,8 +215,8 @@ export class TasksService {
         user_id: BigInt(actor.userId),
         action: 'UPDATE',
         entity: 'tasks',
-        entity_id: id,
-        payload: JSON.stringify(dto),
+        entity_id: taskId,
+        metadata: { data: JSON.stringify(dto) },
       },
     });
 
@@ -252,8 +252,8 @@ export class TasksService {
         user_id: BigInt(actor.userId),
         action: 'DELETE',
         entity: 'tasks',
-        entity_id: id,
-        payload: JSON.stringify({}),
+        entity_id: taskId,
+        metadata: null,
       },
     });
 

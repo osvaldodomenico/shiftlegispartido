@@ -54,8 +54,8 @@ export class InteractionsService {
         user_id: BigInt(actor.userId),
         action: 'CREATE',
         entity: 'interactions',
-        entity_id: String(interaction.id),
-        payload: JSON.stringify(dto),
+        entity_id: interaction.id,
+        metadata: { data: JSON.stringify(dto) },
       },
     });
 
@@ -68,7 +68,7 @@ export class InteractionsService {
 
   // Lista interações do tenant, ordenadas por data decrescente
   // Filtro por person_id opcional; respeita soft delete
-  async findAll(tenantId: string, personId?: string) {
+  async findAll(tenantId: string | number, personId?: string) {
     const interactions = await this.prisma.interactions.findMany({
       where: {
         tenant_id: BigInt(tenantId),
@@ -83,7 +83,7 @@ export class InteractionsService {
   }
 
   // Busca uma interação por ID com isolamento de tenant e soft delete
-  async findOne(id: string, tenantId: string) {
+  async findOne(id: string, tenantId: string | number) {
     const interaction = await this.prisma.interactions.findFirst({
       where: {
         id: BigInt(id),

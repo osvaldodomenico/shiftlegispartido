@@ -31,13 +31,13 @@ describe('CRM Tags (e2e)', () => {
     tenantId = loginRes.body.data.user.tenant_id;
 
     // Busca uma pessoa existente para testes de people_tags
-    const person = await prisma.people.findFirst({ where: { tenant_id: tenantId, deleted_at: null } });
-    peopleId = person?.id;
+    const person = await prisma.people.findFirst({ where: { tenant_id: BigInt(tenantId), deleted_at: null } });
+    peopleId = person?.id.toString();
   });
 
   afterAll(async () => {
-    await prisma.people_tags.deleteMany({ where: { tenant_id: tenantId } });
-    await prisma.tags.deleteMany({ where: { tenant_id: tenantId } });
+    await prisma.people_tags.deleteMany({ where: { tenant_id: BigInt(tenantId) } });
+    await prisma.tags.deleteMany({ where: { tenant_id: BigInt(tenantId) } });
     await app.close();
   });
 

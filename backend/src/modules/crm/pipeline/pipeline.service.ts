@@ -8,18 +8,34 @@ import { UpdateEntryDto } from './dto/update-entry.dto';
 import { JwtPayload } from '../../../common/decorators/current-user.decorator';
 
 const STAGE_SAFE_SELECT = {
-  id: true, tenant_id: true, name: true, order_index: true,
+  id: true, tenant_id: true, name: true, order: true,
   color: true, is_final: true, target_people_type: true,
   created_at: true, updated_at: true,
 };
 
 const ENTRY_SAFE_SELECT = {
-  id: true, tenant_id: true, people_id: true, stage_id: true,
+  id: true, tenant_id: true, person_id: true, stage_id: true,
   entered_at: true, exited_at: true, notes: true,
   created_at: true, updated_at: true,
   person: { select: { id: true, name: true } },
   stage: { select: { id: true, name: true, color: true } },
 };
+
+function serializeStage(s: any) {
+  return { ...s, id: String(s.id), tenant_id: String(s.tenant_id) };
+}
+
+function serializeEntry(e: any) {
+  return {
+    ...e,
+    id: String(e.id),
+    tenant_id: String(e.tenant_id),
+    person_id: String(e.person_id),
+    stage_id: String(e.stage_id),
+    person: e.person ? { ...e.person, id: String(e.person.id) } : null,
+    stage: e.stage ? { ...e.stage, id: String(e.stage.id) } : null,
+  };
+}
 
 @Injectable()
 export class PipelineService {
@@ -28,11 +44,15 @@ export class PipelineService {
   // ---- Stages ----
 
   async createStage(dto: CreateStageDto, actor: JwtPayload) {
+    const tid = BigInt(actor.tenantId);
+    const uid = BigInt(actor.userId);
+
     const stage = await this.prisma.pipeline_stages.create({
       data: {
-        tenant_id: actor.tenantId,
+        tenant_id: tid,
+        created_by: uid,
         name: dto.name,
-        order_index: dto.order_index,
+        order: dto.order_index ?? 0,
         color: dto.color ?? '#6366f1',
         is_final: dto.is_final ?? false,
         target_people_type: dto.target_people_type as any,
@@ -42,56 +62,80 @@ export class PipelineService {
 
     await this.prisma.audit_logs.create({
       data: {
-        tenant_id: actor.tenantId, user_id: actor.userId,
-        action: 'CREATE', entity: 'pipeline_stages', entity_id: stage.id,
-        payload: JSON.stringify(dto),
+        tenant_id: tid,
+        user_id: uid,
+        action: 'CREATE',
+        entity: 'pipeline_stages',
+        entity_id: stage.id,
+        metadata: { data: JSON.stringify(dto) },
       },
     });
 
-    return { success: true, data: stage, message: 'Estágio criado' };
+    return { success: true, data: serializeStage(stage), message: 'Estágio criado' };
   }
 
-  async findAllStages(tenantId: string) {
+  async findAllStages(tenantId: number) {
+    const tid = BigInt(tenantId);
     const stages = await this.prisma.pipeline_stages.findMany({
-      where: { tenant_id: tenantId, deleted_at: null },
+      where: { tenant_id: tid, deleted_at: null },
       select: STAGE_SAFE_SELECT,
-      orderBy: { order_index: 'asc' },
+      orderBy: { order: 'asc' },
     });
-    return { success: true, data: stages };
+    return { success: true, data: stages.map(serializeStage) };
   }
 
   async updateStage(id: string, dto: UpdateStageDto, actor: JwtPayload) {
+    const tid = BigInt(actor.tenantId);
+    const uid = BigInt(actor.userId);
+    const stageId = BigInt(id);
+
     const result = await this.prisma.pipeline_stages.updateMany({
-      where: { id, tenant_id: actor.tenantId, deleted_at: null },
-      data: { ...dto, updated_at: new Date() },
+      where: { id: stageId, tenant_id: tid, deleted_at: null },
+      data: {
+        ...(dto.name && { name: dto.name }),
+        ...(dto.color && { color: dto.color }),
+        ...(dto.is_final !== undefined && { is_final: dto.is_final }),
+        ...(dto.order_index !== undefined && { order: dto.order_index }),
+        updated_at: new Date(),
+      },
     });
     if (result.count === 0) throw new NotFoundException('Estágio não encontrado');
 
-    const stage = await this.prisma.pipeline_stages.findUnique({ where: { id }, select: STAGE_SAFE_SELECT });
+    const stage = await this.prisma.pipeline_stages.findUnique({ where: { id: stageId }, select: STAGE_SAFE_SELECT });
 
     await this.prisma.audit_logs.create({
       data: {
-        tenant_id: actor.tenantId, user_id: actor.userId,
-        action: 'UPDATE', entity: 'pipeline_stages', entity_id: id,
-        payload: JSON.stringify(dto),
+        tenant_id: tid,
+        user_id: uid,
+        action: 'UPDATE',
+        entity: 'pipeline_stages',
+        entity_id: stageId,
+        metadata: { data: JSON.stringify(dto) },
       },
     });
 
-    return { success: true, data: stage, message: 'Estágio atualizado' };
+    return { success: true, data: stage ? serializeStage(stage) : null, message: 'Estágio atualizado' };
   }
 
   async removeStage(id: string, actor: JwtPayload) {
+    const tid = BigInt(actor.tenantId);
+    const uid = BigInt(actor.userId);
+    const stageId = BigInt(id);
+
     const result = await this.prisma.pipeline_stages.updateMany({
-      where: { id, tenant_id: actor.tenantId, deleted_at: null },
+      where: { id: stageId, tenant_id: tid, deleted_at: null },
       data: { deleted_at: new Date() },
     });
     if (result.count === 0) throw new NotFoundException('Estágio não encontrado');
 
     await this.prisma.audit_logs.create({
       data: {
-        tenant_id: actor.tenantId, user_id: actor.userId,
-        action: 'DELETE', entity: 'pipeline_stages', entity_id: id,
-        payload: JSON.stringify({ id }),
+        tenant_id: tid,
+        user_id: uid,
+        action: 'DELETE',
+        entity: 'pipeline_stages',
+        entity_id: stageId,
+        metadata: null,
       },
     });
 
@@ -99,20 +143,26 @@ export class PipelineService {
   }
 
   async reorderStages(dto: ReorderStagesDto, actor: JwtPayload) {
+    const tid = BigInt(actor.tenantId);
+    const uid = BigInt(actor.userId);
+
     await this.prisma.$transaction(
       dto.order.map((item) =>
         this.prisma.pipeline_stages.updateMany({
-          where: { id: item.id, tenant_id: actor.tenantId, deleted_at: null },
-          data: { order_index: item.order_index, updated_at: new Date() },
+          where: { id: BigInt(item.id), tenant_id: tid, deleted_at: null },
+          data: { order: item.order_index, updated_at: new Date() },
         }),
       ),
     );
 
     await this.prisma.audit_logs.create({
       data: {
-        tenant_id: actor.tenantId, user_id: actor.userId,
-        action: 'UPDATE', entity: 'pipeline_stages', entity_id: 'batch-reorder',
-        payload: JSON.stringify(dto),
+        tenant_id: tid,
+        user_id: uid,
+        action: 'UPDATE',
+        entity: 'pipeline_stages',
+        entity_id: null,
+        metadata: { data: JSON.stringify(dto) },
       },
     });
 
@@ -122,21 +172,25 @@ export class PipelineService {
   // ---- Entries ----
 
   async createEntry(dto: CreateEntryDto, actor: JwtPayload) {
+    const tid = BigInt(actor.tenantId);
+    const uid = BigInt(actor.userId);
+
     const person = await this.prisma.people.findFirst({
-      where: { id: dto.people_id, tenant_id: actor.tenantId, deleted_at: null },
+      where: { id: BigInt(dto.people_id), tenant_id: tid, deleted_at: null },
     });
     if (!person) throw new NotFoundException('Pessoa não encontrada');
 
     const stage = await this.prisma.pipeline_stages.findFirst({
-      where: { id: dto.stage_id, tenant_id: actor.tenantId, deleted_at: null },
+      where: { id: BigInt(dto.stage_id), tenant_id: tid, deleted_at: null },
     });
     if (!stage) throw new NotFoundException('Estágio não encontrado');
 
     const entry = await this.prisma.pipeline_entries.create({
       data: {
-        tenant_id: actor.tenantId,
-        people_id: dto.people_id,
-        stage_id: dto.stage_id,
+        tenant_id: tid,
+        created_by: uid,
+        person_id: BigInt(dto.people_id),
+        stage_id: BigInt(dto.stage_id),
         notes: dto.notes,
         entered_at: new Date(),
       },
@@ -145,31 +199,39 @@ export class PipelineService {
 
     await this.prisma.audit_logs.create({
       data: {
-        tenant_id: actor.tenantId, user_id: actor.userId,
-        action: 'CREATE', entity: 'pipeline_entries', entity_id: entry.id,
-        payload: JSON.stringify(dto),
+        tenant_id: tid,
+        user_id: uid,
+        action: 'CREATE',
+        entity: 'pipeline_entries',
+        entity_id: entry.id,
+        metadata: { data: JSON.stringify(dto) },
       },
     });
 
-    return { success: true, data: entry, message: 'Entrada criada' };
+    return { success: true, data: serializeEntry(entry), message: 'Entrada criada' };
   }
 
-  async findAllEntries(tenantId: string, stageId?: string, peopleId?: string) {
+  async findAllEntries(tenantId: number, stageId?: string, peopleId?: string) {
+    const tid = BigInt(tenantId);
     const entries = await this.prisma.pipeline_entries.findMany({
       where: {
-        tenant_id: tenantId,
-        ...(stageId && { stage_id: stageId }),
-        ...(peopleId && { people_id: peopleId }),
+        tenant_id: tid,
+        ...(stageId && { stage_id: BigInt(stageId) }),
+        ...(peopleId && { person_id: BigInt(peopleId) }),
       },
       select: ENTRY_SAFE_SELECT,
       orderBy: { entered_at: 'desc' },
     });
-    return { success: true, data: entries };
+    return { success: true, data: entries.map(serializeEntry) };
   }
 
   async updateEntry(id: string, dto: UpdateEntryDto, actor: JwtPayload) {
+    const tid = BigInt(actor.tenantId);
+    const uid = BigInt(actor.userId);
+    const entryId = BigInt(id);
+
     const result = await this.prisma.pipeline_entries.updateMany({
-      where: { id, tenant_id: actor.tenantId },
+      where: { id: entryId, tenant_id: tid },
       data: {
         ...(dto.notes !== undefined && { notes: dto.notes }),
         ...(dto.exited_at && { exited_at: new Date(dto.exited_at) }),
@@ -178,16 +240,19 @@ export class PipelineService {
     });
     if (result.count === 0) throw new NotFoundException('Entrada não encontrada');
 
-    const entry = await this.prisma.pipeline_entries.findUnique({ where: { id }, select: ENTRY_SAFE_SELECT });
+    const entry = await this.prisma.pipeline_entries.findUnique({ where: { id: entryId }, select: ENTRY_SAFE_SELECT });
 
     await this.prisma.audit_logs.create({
       data: {
-        tenant_id: actor.tenantId, user_id: actor.userId,
-        action: 'UPDATE', entity: 'pipeline_entries', entity_id: id,
-        payload: JSON.stringify(dto),
+        tenant_id: tid,
+        user_id: uid,
+        action: 'UPDATE',
+        entity: 'pipeline_entries',
+        entity_id: entryId,
+        metadata: { data: JSON.stringify(dto) },
       },
     });
 
-    return { success: true, data: entry, message: 'Entrada atualizada' };
+    return { success: true, data: entry ? serializeEntry(entry) : null, message: 'Entrada atualizada' };
   }
 }

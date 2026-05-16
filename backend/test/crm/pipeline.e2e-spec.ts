@@ -26,13 +26,13 @@ describe('CRM Pipeline (e2e)', () => {
     authToken = loginRes.body.data.access_token;
     tenantId = loginRes.body.data.user.tenant_id;
 
-    const person = await prisma.people.findFirst({ where: { tenant_id: tenantId, deleted_at: null } });
-    peopleId = person?.id;
+    const person = await prisma.people.findFirst({ where: { tenant_id: BigInt(tenantId), deleted_at: null } });
+    peopleId = person?.id.toString();
   });
 
   afterAll(async () => {
-    await prisma.pipeline_entries.deleteMany({ where: { tenant_id: tenantId } });
-    await prisma.pipeline_stages.deleteMany({ where: { tenant_id: tenantId } });
+    await prisma.pipeline_entries.deleteMany({ where: { tenant_id: BigInt(tenantId) } });
+    await prisma.pipeline_stages.deleteMany({ where: { tenant_id: BigInt(tenantId) } });
     await app.close();
   });
 
@@ -107,7 +107,7 @@ describe('CRM Pipeline (e2e)', () => {
       .expect(200);
 
     expect(res.body.success).toBe(true);
-    const deleted = await prisma.pipeline_stages.findUnique({ where: { id: stageId } });
+    const deleted = await prisma.pipeline_stages.findUnique({ where: { id: BigInt(stageId) } });
     expect(deleted?.deleted_at).not.toBeNull();
   });
 });

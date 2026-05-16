@@ -35,10 +35,13 @@ export class EventsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateEventDto, actor: JwtPayload) {
+    const tid = BigInt(actor.tenantId);
+    const uid = BigInt(actor.userId);
+
     const event = await this.prisma.events.create({
       data: {
-        tenant_id: BigInt(actor.tenantId),
-        created_by: BigInt(actor.userId),
+        tenant_id: tid,
+        created_by: uid,
         name: dto.name,
         description: dto.description,
         start_at: new Date(dto.start_at),
@@ -51,22 +54,23 @@ export class EventsService {
     // Audit log obrigatório em todo create
     await this.prisma.audit_logs.create({
       data: {
-        tenant_id: BigInt(actor.tenantId),
-        user_id: BigInt(actor.userId),
+        tenant_id: tid,
+        user_id: uid,
         action: 'CREATE',
         entity: 'events',
-        entity_id: String(event.id),
-        payload: JSON.stringify(dto),
+        entity_id: event.id,
+        metadata: { data: JSON.stringify(dto) },
       },
     });
 
     return { success: true, data: serializeEvent(event), message: 'Evento criado' };
   }
 
-  async findAll(tenantId: string, startFrom?: string, startTo?: string) {
+  async findAll(tenantId: string | number, startFrom?: string, startTo?: string) {
+    const tid = BigInt(tenantId);
     const events = await this.prisma.events.findMany({
       where: {
-        tenant_id: BigInt(tenantId),
+        tenant_id: tid,
         deleted_at: null,
         ...(startFrom && { start_at: { gte: new Date(startFrom) } }),
         ...(startTo && { start_at: { lte: new Date(startTo) } }),
@@ -78,11 +82,12 @@ export class EventsService {
     return { success: true, data: events.map(serializeEvent) };
   }
 
-  async findOne(id: string, tenantId: string) {
+  async findOne(id: string, tenantId: string | number) {
+    const tid = BigInt(tenantId);
     const event = await this.prisma.events.findFirst({
       where: {
         id: BigInt(id),
-        tenant_id: BigInt(tenantId),
+        tenant_id: tid,
         deleted_at: null,
       },
       select: EVENT_SAFE_SELECT,
@@ -93,6 +98,10 @@ export class EventsService {
   }
 
   async update(id: string, dto: UpdateEventDto, actor: JwtPayload) {
+    const tid = BigInt(actor.tenantId);
+    const uid = BigInt(actor.userId);
+    const eventId = BigInt(id);
+
     const data: any = {};
     if (dto.name !== undefined) data.name = dto.name;
     if (dto.description !== undefined) data.description = dto.description;
@@ -102,28 +111,24 @@ export class EventsService {
 
     // Escrita atômica com isolamento de tenant e proteção contra soft delete
     const result = await this.prisma.events.updateMany({
-      where: {
-        id: BigInt(id),
-        tenant_id: BigInt(actor.tenantId),
-        deleted_at: null,
-      },
+      where: { id: eventId, tenant_id: tid, deleted_at: null },
       data,
     });
     if (result.count === 0) throw new NotFoundException('Evento não encontrado');
 
     const event = await this.prisma.events.findUnique({
-      where: { id: BigInt(id) },
+      where: { id: eventId },
       select: EVENT_SAFE_SELECT,
     });
 
     await this.prisma.audit_logs.create({
       data: {
-        tenant_id: BigInt(actor.tenantId),
-        user_id: BigInt(actor.userId),
+        tenant_id: tid,
+        user_id: uid,
         action: 'UPDATE',
         entity: 'events',
-        entity_id: id,
-        payload: JSON.stringify(dto),
+        entity_id: eventId,
+        metadata: { data: JSON.stringify(dto) },
       },
     });
 
@@ -131,25 +136,25 @@ export class EventsService {
   }
 
   async remove(id: string, actor: JwtPayload) {
+    const tid = BigInt(actor.tenantId);
+    const uid = BigInt(actor.userId);
+    const eventId = BigInt(id);
+
     // Soft delete — preserva histórico de auditoria
     const result = await this.prisma.events.updateMany({
-      where: {
-        id: BigInt(id),
-        tenant_id: BigInt(actor.tenantId),
-        deleted_at: null,
-      },
+      where: { id: eventId, tenant_id: tid, deleted_at: null },
       data: { deleted_at: new Date() },
     });
     if (result.count === 0) throw new NotFoundException('Evento não encontrado');
 
     await this.prisma.audit_logs.create({
       data: {
-        tenant_id: BigInt(actor.tenantId),
-        user_id: BigInt(actor.userId),
+        tenant_id: tid,
+        user_id: uid,
         action: 'DELETE',
         entity: 'events',
-        entity_id: id,
-        payload: null,
+        entity_id: eventId,
+        metadata: null,
       },
     });
 
@@ -157,13 +162,13 @@ export class EventsService {
   }
 
   async addAttendees(eventId: string, dto: AddAttendeesDto, actor: JwtPayload) {
+    const tid = BigInt(actor.tenantId);
+    const uid = BigInt(actor.userId);
+    const evId = BigInt(eventId);
+
     // Verifica que o evento existe e pertence ao tenant
     const event = await this.prisma.events.findFirst({
-      where: {
-        id: BigInt(eventId),
-        tenant_id: BigInt(actor.tenantId),
-        deleted_at: null,
-      },
+      where: { id: evId, tenant_id: tid, deleted_at: null },
     });
     if (!event) throw new NotFoundException('Evento não encontrado');
 
@@ -173,14 +178,14 @@ export class EventsService {
         this.prisma.event_attendances.upsert({
           where: {
             event_id_person_id: {
-              event_id: BigInt(eventId),
+              event_id: evId,
               person_id: BigInt(personId),
             },
           },
           create: {
-            event_id: BigInt(eventId),
+            event_id: evId,
             person_id: BigInt(personId),
-            tenant_id: BigInt(actor.tenantId),
+            tenant_id: tid,
           },
           update: {},
         }),
@@ -189,12 +194,12 @@ export class EventsService {
 
     await this.prisma.audit_logs.create({
       data: {
-        tenant_id: BigInt(actor.tenantId),
-        user_id: BigInt(actor.userId),
+        tenant_id: tid,
+        user_id: uid,
         action: 'CREATE',
         entity: 'event_attendances',
-        entity_id: eventId,
-        payload: JSON.stringify(dto),
+        entity_id: evId,
+        metadata: { data: JSON.stringify(dto) },
       },
     });
 
@@ -207,12 +212,15 @@ export class EventsService {
     dto: UpdateAttendanceDto,
     actor: JwtPayload,
   ) {
+    const tid = BigInt(actor.tenantId);
+    const uid = BigInt(actor.userId);
+
     // Verifica que o evento pertence ao tenant antes de atualizar
     const attendance = await this.prisma.event_attendances.findFirst({
       where: {
         event_id: BigInt(eventId),
         person_id: BigInt(personId),
-        tenant_id: BigInt(actor.tenantId),
+        tenant_id: tid,
       },
     });
     if (!attendance) throw new NotFoundException('Participante não encontrado');
@@ -231,12 +239,12 @@ export class EventsService {
 
     await this.prisma.audit_logs.create({
       data: {
-        tenant_id: BigInt(actor.tenantId),
-        user_id: BigInt(actor.userId),
+        tenant_id: tid,
+        user_id: uid,
         action: 'UPDATE',
         entity: 'event_attendances',
-        entity_id: String(attendance.id),
-        payload: JSON.stringify(dto),
+        entity_id: attendance.id,
+        metadata: { data: JSON.stringify(dto) },
       },
     });
 
@@ -253,11 +261,14 @@ export class EventsService {
   }
 
   async removeAttendee(eventId: string, personId: string, actor: JwtPayload) {
+    const tid = BigInt(actor.tenantId);
+    const uid = BigInt(actor.userId);
+
     const attendance = await this.prisma.event_attendances.findFirst({
       where: {
         event_id: BigInt(eventId),
         person_id: BigInt(personId),
-        tenant_id: BigInt(actor.tenantId),
+        tenant_id: tid,
       },
     });
     if (!attendance) throw new NotFoundException('Participante não encontrado');
@@ -266,12 +277,12 @@ export class EventsService {
 
     await this.prisma.audit_logs.create({
       data: {
-        tenant_id: BigInt(actor.tenantId),
-        user_id: BigInt(actor.userId),
+        tenant_id: tid,
+        user_id: uid,
         action: 'DELETE',
         entity: 'event_attendances',
-        entity_id: String(attendance.id),
-        payload: null,
+        entity_id: attendance.id,
+        metadata: null,
       },
     });
 

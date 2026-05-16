@@ -135,7 +135,6 @@ export class AuthService {
       },
       include: {
         user_roles: {
-          where: { deleted_at: null },
           include: { roles: true },
         },
       },
