@@ -12,12 +12,40 @@ class MyTasksScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Minhas Tarefas')),
-      body: tasksAsync.when(
+      body: RefreshIndicator(
+        onRefresh: () async => ref.invalidate(myTasksProvider),
+        child: tasksAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Erro: $e')),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.wifi_off, size: 48, color: Colors.grey),
+              const SizedBox(height: 12),
+              Text('Erro ao carregar tarefas',
+                  style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: () => ref.invalidate(myTasksProvider),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Tentar novamente'),
+              ),
+            ],
+          ),
+        ),
         data: (tasks) {
           if (tasks.isEmpty) {
-            return const Center(child: Text('Nenhuma tarefa atribuída a você'));
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.task_alt, size: 64, color: Colors.grey),
+                  SizedBox(height: 12),
+                  Text('Nenhuma tarefa pendente',
+                      style: TextStyle(color: Colors.grey, fontSize: 16)),
+                ],
+              ),
+            );
           }
           return ListView.builder(
             itemCount: tasks.length,
@@ -57,6 +85,7 @@ class MyTasksScreen extends ConsumerWidget {
             },
           );
         },
+      ),
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../auth/auth_provider.dart';
+import '../notifications/fcm_provider.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/crm/screens/contacts_screen.dart';
@@ -22,6 +23,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final authAsync = ref.watch(isLoggedInProvider);
 
   return GoRouter(
+    navigatorKey: navigatorKey,
     initialLocation: '/home',
     redirect: (context, state) {
       // Enquanto verifica o token, não redireciona

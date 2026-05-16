@@ -71,20 +71,43 @@ class ContactsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Expanded(
-            child: contactsAsync.when(
-              data: (resp) => resp.data.isEmpty
-                  ? const Center(child: Text('Nenhum contato encontrado'))
-                  : ListView.builder(
-                      itemCount: resp.data.length,
-                      itemBuilder: (_, i) => ContactCard(
-                        person: resp.data[i],
-                        onTap: () =>
-                            context.push('/contacts/${resp.data[i].id}'),
+            child: RefreshIndicator(
+              onRefresh: () async => ref.invalidate(contactsProvider),
+              child: contactsAsync.when(
+                data: (resp) => resp.data.isEmpty
+                    ? const Center(child: Text('Nenhum contato encontrado'))
+                    : ListView.builder(
+                        itemCount: resp.data.length,
+                        itemBuilder: (_, i) => ContactCard(
+                          person: resp.data[i],
+                          onTap: () =>
+                              context.push('/contacts/${resp.data[i].id}'),
+                        ),
                       ),
-                    ),
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Erro: $e')),
+                loading: () =>
+                    const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.wifi_off, size: 48, color: Colors.grey),
+                      const SizedBox(height: 12),
+                      Text('Erro ao carregar contatos',
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 4),
+                      Text('$e',
+                          style: Theme.of(context).textTheme.bodySmall,
+                          textAlign: TextAlign.center),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        onPressed: () => ref.invalidate(contactsProvider),
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Tentar novamente'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ],

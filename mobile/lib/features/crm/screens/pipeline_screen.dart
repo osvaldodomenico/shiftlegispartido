@@ -43,18 +43,33 @@ class _StageTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final personsAsync = ref.watch(pipelineStageProvider(stage));
-    return personsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Erro: $e')),
-      data: (persons) => persons.isEmpty
-          ? Center(child: Text('Nenhum contato em "$stage"'))
-          : ListView.builder(
-              itemCount: persons.length,
-              itemBuilder: (_, i) => ContactCard(
-                person: persons[i],
-                onTap: () => context.push('/contacts/${persons[i].id}'),
+    return RefreshIndicator(
+      onRefresh: () async => ref.invalidate(pipelineStageProvider(stage)),
+      child: personsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Erro ao carregar: $e')),
+        data: (persons) => persons.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.people_outline,
+                        size: 64, color: Colors.grey),
+                    const SizedBox(height: 12),
+                    Text('Nenhum contato em "$stage"',
+                        style: const TextStyle(
+                            color: Colors.grey, fontSize: 16)),
+                  ],
+                ),
+              )
+            : ListView.builder(
+                itemCount: persons.length,
+                itemBuilder: (_, i) => ContactCard(
+                  person: persons[i],
+                  onTap: () => context.push('/contacts/${persons[i].id}'),
+                ),
               ),
-            ),
+      ),
     );
   }
 }

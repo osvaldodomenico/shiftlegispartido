@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/auth/auth_service.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/api/api_exception.dart';
+import '../../../core/notifications/fcm_provider.dart';
 
 enum AuthStatus { idle, loading, success, error }
 
@@ -32,6 +33,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // Invalida provider de isLoggedIn para o router redirecionar automaticamente
       _ref.invalidate(isLoggedInProvider);
       state = state.copyWith(status: AuthStatus.success);
+      // Registra token FCM no backend após login bem-sucedido
+      await _ref.read(fcmServiceProvider).registerToken();
     } on ApiException catch (e) {
       state = state.copyWith(status: AuthStatus.error, errorMessage: e.message);
     } catch (_) {
@@ -43,6 +46,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    // Remove token FCM do backend antes de apagar credenciais locais
+    await _ref.read(fcmServiceProvider).unregisterToken();
     await _authService.logout();
     _ref.invalidate(isLoggedInProvider);
     state = const AuthState();

@@ -14,7 +14,8 @@ class ApiException implements Exception {
       final data = error.response.data;
       final message =
           data is Map ? (data['message'] ?? 'Erro desconhecido') : 'Erro desconhecido';
-      final code = data is Map ? data['error']?['code'] : null;
+      final errorMap = data is Map ? data['error'] : null;
+      final code = errorMap is Map ? errorMap['code'] : null;
       return ApiException(
         statusCode: error.response.statusCode,
         message: message.toString(),
