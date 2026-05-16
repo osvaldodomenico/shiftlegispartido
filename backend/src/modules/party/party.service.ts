@@ -152,7 +152,7 @@ export class PartyService {
       select: {
         ...CHAPTER_SAFE_SELECT,
         members: {
-          where: { deleted_at: null },
+          where: { left_at: null },
           select: CHAPTER_MEMBER_SELECT,
         },
         children: {

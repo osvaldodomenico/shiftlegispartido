@@ -40,7 +40,7 @@ export class CampaignsService {
         action,
         entity,
         entity_id: entityId,
-        payload: JSON.stringify(payload),
+        metadata: JSON.stringify(payload),
       },
     });
   }
@@ -57,9 +57,9 @@ export class CampaignsService {
         election_id: BigInt(dto.election_id),
         person_id: BigInt(dto.people_id),
         name: dto.name,
-        office: dto.office,
-        budget: dto.budget ?? null,
-        status: 'planejamento',
+        position: dto.office,
+        budget_limit: dto.budget ?? null,
+        status: 'planning',
         created_by: userId,
       },
     });
@@ -389,6 +389,7 @@ export class CampaignsService {
         due_date: new Date(dto.due_date),
         paid_at: dto.paid_at ? new Date(dto.paid_at) : null,
         notes: dto.notes ?? null,
+        created_by: userId,
       },
     });
 
@@ -579,7 +580,7 @@ export class CampaignsService {
     });
     if (!report) throw new NotFoundException('Relatório TSE não encontrado');
 
-    if (report.status === 'submitted' || report.status === 'accepted') {
+    if (report.status === 'submitted' || report.status === 'approved') {
       throw new BadRequestException('Relatório já submetido — não pode ser alterado');
     }
 
@@ -594,7 +595,7 @@ export class CampaignsService {
         reference_date: dto.reference_date ?? null,
         notes: dto.notes ?? null,
         created_by: userId,
-      },
+      } as any,
     });
 
     await this.audit(tenantId, userId, 'CREATE', 'tse_report_items', item.id, dto);
