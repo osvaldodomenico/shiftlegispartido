@@ -5,35 +5,48 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { getTseReport, getTseReportItems, submitTseReport } from "@/services/electoral-api";
-import type { TseReport, TseReportItem, TseReportType, TseReportStatus } from "@/types/electoral";
+import type { TseReport, TseReportItem, TseReportStatus } from "@/types/electoral";
 import { TseReportItems } from "@/components/electoral/TseReportItems";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Send, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
 
-const TYPE_LABELS: Record<TseReportType, string> = { receita: "Receita", despesa: "Despesa" };
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatBRL(value?: number) {
+  if (value === undefined || value === null) return "—";
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+}
+function formatDate(str?: string) {
+  if (!str) return "—";
+  return new Date(str).toLocaleDateString("pt-BR");
+}
+
+// ─── Labels ───────────────────────────────────────────────────────────────────
 
 const STATUS_LABELS: Record<TseReportStatus, string> = {
   draft: "Rascunho",
-  submitted: "Enviado",
-  accepted: "Aceito",
-  rejected: "Rejeitado",
+  submitted: "Enviado ao TSE",
+  accepted: "Aceito pelo TSE",
+  rejected: "Rejeitado pelo TSE",
 };
-
 const STATUS_COLORS: Record<TseReportStatus, string> = {
   draft: "bg-gray-100 text-gray-600",
   submitted: "bg-blue-100 text-blue-700",
   accepted: "bg-green-100 text-green-700",
   rejected: "bg-red-100 text-red-700",
 };
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TseReportDetailPage() {
   const { id, reportId } = useParams<{ id: string; reportId: string }>();
@@ -45,19 +58,17 @@ export default function TseReportDetailPage() {
 
   const loadReport = useCallback(async () => {
     try {
-      const data = await getTseReport(id, reportId);
-      setReport(data);
+      setReport(await getTseReport(id, reportId));
     } catch {
-      toast.error("Erro ao carregar relatório");
+      toast.error("Erro ao carregar prestação de contas");
     }
   }, [id, reportId]);
 
   const loadItems = useCallback(async () => {
     try {
-      const data = await getTseReportItems(id, reportId);
-      setItems(data);
+      setItems(await getTseReportItems(id, reportId));
     } catch {
-      toast.error("Erro ao carregar itens do relatório");
+      toast.error("Erro ao carregar lançamentos");
     }
   }, [id, reportId]);
 
@@ -74,11 +85,11 @@ export default function TseReportDetailPage() {
     setSubmitting(true);
     try {
       await submitTseReport(id, reportId);
-      toast.success("Relatório enviado ao TSE com sucesso");
+      toast.success("Prestação de contas enviada ao TSE");
       setConfirmOpen(false);
       loadReport();
     } catch {
-      toast.error("Erro ao enviar relatório ao TSE");
+      toast.error("Erro ao enviar prestação de contas ao TSE");
     } finally {
       setSubmitting(false);
     }
@@ -87,17 +98,28 @@ export default function TseReportDetailPage() {
   if (loading) {
     return <div className="p-6 text-center text-muted-foreground">Carregando...</div>;
   }
-
   if (!report) {
-    return <div className="p-6 text-center text-muted-foreground">Relatório não encontrado</div>;
+    return (
+      <div className="p-6 text-center text-muted-foreground">
+        Prestação de contas não encontrada
+      </div>
+    );
   }
 
   const isDraft = report.status === "draft";
 
+  // Computed totals from items if API didn't return them
+  const totalReceitas =
+    report.total_receitas ??
+    items.filter((i) => i.type === "receita").reduce((s, i) => s + i.amount, 0);
+  const totalDespesas =
+    report.total_despesas ??
+    items.filter((i) => i.type === "despesa").reduce((s, i) => s + i.amount, 0);
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" asChild>
             <Link href={`/electoral/campaigns/${id}/tse`}>
@@ -105,80 +127,98 @@ export default function TseReportDetailPage() {
             </Link>
           </Button>
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-bold">
-                Relatório TSE — {TYPE_LABELS[report.type]}
+                Prestação de Contas TSE
               </h1>
               <Badge className={STATUS_COLORS[report.status]}>
                 {STATUS_LABELS[report.status]}
               </Badge>
-              {report.is_final && (
+              {report.is_final ? (
                 <Badge className="bg-purple-100 text-purple-700">Final</Badge>
+              ) : (
+                <Badge className="bg-indigo-100 text-indigo-700">Parcial</Badge>
               )}
             </div>
-            <p className="text-muted-foreground text-sm">
-              Período: {new Date(report.period_start).toLocaleDateString("pt-BR")} a{" "}
-              {new Date(report.period_end).toLocaleDateString("pt-BR")}
+            <p className="text-muted-foreground text-sm mt-0.5">
+              Período: {formatDate(report.period_start)} a {formatDate(report.period_end)}
+              {report.submitted_at && ` · Enviado em ${formatDate(report.submitted_at)}`}
             </p>
           </div>
         </div>
-
         {isDraft && (
-          <Button onClick={() => setConfirmOpen(true)} disabled={submitting}>
+          <Button onClick={() => setConfirmOpen(true)}>
             <Send className="h-4 w-4 mr-2" />
             Enviar ao TSE
           </Button>
         )}
       </div>
 
-      {/* Report metadata */}
-      <div className="rounded-lg border bg-white dark:bg-[#273142] p-6">
-        <h2 className="text-base font-semibold mb-4">Informações do Relatório</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Tipo</p>
-            <Badge className="bg-indigo-100 text-indigo-700">{TYPE_LABELS[report.type]}</Badge>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Status</p>
-            <Badge className={STATUS_COLORS[report.status]}>{STATUS_LABELS[report.status]}</Badge>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Relatório</p>
-            <p className="font-medium">{report.is_final ? "Final" : "Parcial"}</p>
-          </div>
-          {report.submitted_at && (
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Enviado em</p>
-              <p className="font-medium">
-                {new Date(report.submitted_at).toLocaleDateString("pt-BR")}
-              </p>
-            </div>
-          )}
-        </div>
+      {/* Totals */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Receitas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xl font-bold text-green-700">{formatBRL(totalReceitas)}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {items.filter((i) => i.type === "receita").length} lançamento(s)
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Despesas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xl font-bold text-red-700">{formatBRL(totalDespesas)}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {items.filter((i) => i.type === "despesa").length} lançamento(s)
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Saldo</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p
+              className={`text-xl font-bold ${
+                totalReceitas - totalDespesas >= 0 ? "text-green-700" : "text-red-700"
+              }`}
+            >
+              {formatBRL(totalReceitas - totalDespesas)}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Items */}
-      <div className="rounded-lg border bg-white dark:bg-[#273142] p-6">
-        <h2 className="text-base font-semibold mb-4">Itens do Relatório</h2>
-        <TseReportItems
-          campaignId={id}
-          reportId={reportId}
-          items={items}
-          onRefresh={loadItems}
-          readOnly={!isDraft}
-        />
-      </div>
+      <TseReportItems
+        campaignId={id}
+        reportId={reportId}
+        items={items}
+        onRefresh={loadItems}
+        readOnly={!isDraft}
+      />
 
-      {/* Confirmation Dialog */}
+      {/* Confirm submit dialog */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirmar envio ao TSE</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Confirmar Envio ao TSE
+            </DialogTitle>
             <DialogDescription>
-              Esta ação irá enviar o relatório ao TSE e não poderá ser desfeita. O relatório
-              passará para o status &ldquo;Enviado&rdquo; e não poderá mais ser editado. Deseja
-              continuar?
+              Esta ação enviará a prestação de contas ao Tribunal Superior Eleitoral.
+              Após o envio, não será possível realizar novos lançamentos neste relatório.
+              Deseja continuar?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

@@ -60,7 +60,7 @@ export default function ContactsListPage() {
       if (filterTag !== "all") params.tag = filterTag;
       const data = await crmApi.getContacts(params);
       // API retorna { data: [...] } ou array direto — normaliza
-      setContacts(Array.isArray(data) ? data : (data as { data: CrmContact[] }).data ?? []);
+      setContacts(Array.isArray(data) ? data : []);
     } catch {
       setContacts([]);
     } finally {
@@ -72,8 +72,8 @@ export default function ContactsListPage() {
     // Carrega stages e tags para os filtros
     Promise.all([crmApi.getPipelineStages(), crmApi.getTags()])
       .then(([s, t]) => {
-        setStages(Array.isArray(s) ? s : (s as { data: PipelineStage[] }).data ?? []);
-        setTags(Array.isArray(t) ? t : (t as { data: CrmTag[] }).data ?? []);
+        setStages(Array.isArray(s) ? s : []);
+        setTags(Array.isArray(t) ? t : []);
       })
       .catch(() => {});
   }, []);

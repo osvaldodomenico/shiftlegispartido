@@ -271,7 +271,7 @@ export default function ContactProfilePage({ params }: PageProps) {
     try {
       // Busca o contato via lista filtrada por id — API de people
       const data = await crmApi.getContacts({ search: id });
-      const list = Array.isArray(data) ? data : (data as { data: CrmContact[] }).data ?? [];
+      const list = Array.isArray(data) ? data : [];
       // Tenta encontrar pelo id exato
       const found = list.find((c) => c.id === id) ?? list[0] ?? null;
       setContact(found);
@@ -283,7 +283,7 @@ export default function ContactProfilePage({ params }: PageProps) {
   const fetchInteractions = useCallback(async () => {
     try {
       const data = await crmApi.getPersonInteractions(id);
-      setInteractions(Array.isArray(data) ? data : (data as { data: Interaction[] }).data ?? []);
+      setInteractions(Array.isArray(data) ? data : []);
     } catch {
       setInteractions([]);
     }
@@ -292,7 +292,7 @@ export default function ContactProfilePage({ params }: PageProps) {
   const fetchTasks = useCallback(async () => {
     try {
       const data = await crmApi.getPersonTasks(id);
-      setTasks(Array.isArray(data) ? data : (data as { data: CrmTask[] }).data ?? []);
+      setTasks(Array.isArray(data) ? data : []);
     } catch {
       setTasks([]);
     }
@@ -301,7 +301,7 @@ export default function ContactProfilePage({ params }: PageProps) {
   const fetchEvents = useCallback(async () => {
     try {
       const data = await crmApi.getPersonEvents(id);
-      setEvents(Array.isArray(data) ? data : (data as { data: CrmEvent[] }).data ?? []);
+      setEvents(Array.isArray(data) ? data : []);
     } catch {
       setEvents([]);
     }
@@ -310,7 +310,7 @@ export default function ContactProfilePage({ params }: PageProps) {
   const fetchPersonTags = useCallback(async () => {
     try {
       const data = await crmApi.getPersonTags(id);
-      setPersonTags(Array.isArray(data) ? data : (data as { data: CrmTag[] }).data ?? []);
+      setPersonTags(Array.isArray(data) ? data : []);
     } catch {
       setPersonTags([]);
     }
@@ -325,10 +325,10 @@ export default function ContactProfilePage({ params }: PageProps) {
       fetchEvents(),
       fetchPersonTags(),
       crmApi.getPipelineStages().then((s) => {
-        setStages(Array.isArray(s) ? s : (s as { data: PipelineStage[] }).data ?? []);
+        setStages(Array.isArray(s) ? s : []);
       }).catch(() => {}),
       crmApi.getTags().then((t) => {
-        setAllTags(Array.isArray(t) ? t : (t as { data: CrmTag[] }).data ?? []);
+        setAllTags(Array.isArray(t) ? t : []);
       }).catch(() => {}),
     ]).finally(() => setLoading(false));
   }, [fetchContact, fetchInteractions, fetchTasks, fetchEvents, fetchPersonTags]);

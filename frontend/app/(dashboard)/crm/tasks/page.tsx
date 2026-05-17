@@ -20,7 +20,7 @@ export default function TasksPage() {
     setLoading(true);
     try {
       const data = await getTasks(scope === "me" ? { assignedTo: "me" } : {});
-      setTasks(Array.isArray(data) ? data : (data as any)?.data ?? []);
+      setTasks(Array.isArray(data) ? data : []);
     } catch {
       setTasks([]);
     } finally {

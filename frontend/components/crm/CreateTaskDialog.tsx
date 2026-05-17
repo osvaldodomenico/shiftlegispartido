@@ -88,7 +88,7 @@ export function CreateTaskDialog({
   useEffect(() => {
     if (!open) return;
     getContacts()
-      .then((data: any) => setContacts(Array.isArray(data) ? data : data?.data ?? []))
+      .then((data) => setContacts(Array.isArray(data) ? data : []))
       .catch(() => setContacts([]));
   }, [open]);
 

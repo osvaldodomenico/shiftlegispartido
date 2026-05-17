@@ -76,7 +76,7 @@ export function PipelineKanban() {
     getPipelineStages()
       .then((s) => {
         const pipelineStages = s;
-        setStages(pipelineStages as any);
+        setStages(Array.isArray(pipelineStages) ? pipelineStages : []);
         return Promise.all(
           pipelineStages.map((stage) =>
             getPipelineStageContacts(stage.id).then((contacts) => ({

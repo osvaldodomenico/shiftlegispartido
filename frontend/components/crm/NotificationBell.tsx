@@ -19,7 +19,7 @@ export function NotificationBell() {
     // Polling de notificações não lidas a cada 30 segundos
     const poll = () =>
       getUnreadCount()
-        .then((r: any) => setCount(r?.count ?? r?.data?.count ?? 0))
+        .then((r: any) => setCount(typeof r === "number" ? r : (r?.count ?? 0)))
         .catch(() => {});
     poll();
     const interval = setInterval(poll, 30_000);
@@ -31,7 +31,7 @@ export function NotificationBell() {
     if (value) {
       try {
         const data = await getNotifications();
-        setNotifications(Array.isArray(data) ? data : (data as any)?.data ?? []);
+        setNotifications(Array.isArray(data) ? data : []);
       } catch {
         setNotifications([]);
       }

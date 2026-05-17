@@ -49,7 +49,7 @@ export function CsvImportWizard() {
   const handleConfirm = async () => {
     if (!file) return;
     const result = await uploadCsv(file);
-    setImportRecord(result as any);
+    setImportRecord(result);
     setStep("result");
     setPolling(true);
   };
@@ -60,8 +60,8 @@ export function CsvImportWizard() {
 
     pollRef.current = setInterval(async () => {
       const status = await getImportStatus(importRecord.id);
-      setImportRecord(status as any);
-      if ((status as any).status === "done" || (status as any).status === "error") {
+      setImportRecord(status);
+      if (status.status === "done" || status.status === "error") {
         setPolling(false);
         if (pollRef.current) clearInterval(pollRef.current);
       }
