@@ -96,9 +96,7 @@ export default function EventDetailPage() {
   if (loading) {
     return (
       <>
-        <DashboardBreadcrumb
-          items={[{ label: "CRM" }, { label: "Eventos", href: "/crm/events" }, { label: "Carregando..." }]}
-        />
+        <DashboardBreadcrumb title="CRM" text="Carregando..." />
         <div className="p-6 space-y-4">
           <Skeleton className="h-8 w-64" />
           <Skeleton className="h-32 w-full rounded-xl" />
@@ -111,9 +109,7 @@ export default function EventDetailPage() {
   if (!event) {
     return (
       <>
-        <DashboardBreadcrumb
-          items={[{ label: "CRM" }, { label: "Eventos", href: "/crm/events" }, { label: "Não encontrado" }]}
-        />
+        <DashboardBreadcrumb title="CRM" text="Não encontrado" />
         <div className="p-6 text-center py-20 text-muted-foreground">
           <p className="text-sm">Evento não encontrado.</p>
           <Button variant="outline" className="mt-4" onClick={() => router.push("/crm/events")}>
@@ -127,13 +123,7 @@ export default function EventDetailPage() {
 
   return (
     <>
-      <DashboardBreadcrumb
-        items={[
-          { label: "CRM" },
-          { label: "Eventos", href: "/crm/events" },
-          { label: event.title },
-        ]}
-      />
+      <DashboardBreadcrumb title="CRM" text={event.title} />
 
       <div className="p-6 space-y-6">
         <div className="flex items-center gap-3">
@@ -208,7 +198,7 @@ export default function EventDetailPage() {
                   {attendances.map((att) => (
                     <TableRow key={att.person_id}>
                       <TableCell className="font-medium">
-                        {att.person?.name ?? att.person_id}
+                        {att.person_name ?? att.person_id}
                       </TableCell>
                       <TableCell>
                         <Badge

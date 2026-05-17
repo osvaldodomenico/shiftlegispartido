@@ -226,7 +226,7 @@ export default function TagsSettingsPage() {
       {/* AlertDialog de confirmação de exclusão */}
       <AlertDialog
         open={!!deleteId}
-        onOpenChange={(open) => !open && setDeleteId(null)}
+        onOpenChange={(open: boolean) => !open && setDeleteId(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>

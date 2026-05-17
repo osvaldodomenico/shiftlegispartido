@@ -41,7 +41,7 @@ export default function CrmDashboardPage() {
 
   return (
     <>
-      <DashboardBreadcrumb items={[{ label: "CRM" }, { label: "Dashboard" }]} />
+      <DashboardBreadcrumb title="CRM" text="Dashboard" />
 
       <div className="p-6 space-y-6">
         <h1 className="text-2xl font-bold">Dashboard CRM</h1>

@@ -280,7 +280,7 @@ export default function BankReconciliationPage() {
     }
     setSaving(true);
     try {
-      await reconcileStatement(showReconcile.id, txId);
+      await reconcileStatement(showReconcile.bank_account_id, showReconcile.id, txId);
       toast.success("Lançamento conciliado com sucesso");
       setShowReconcile(null);
       setReconcileTransactionId("");
@@ -298,9 +298,7 @@ export default function BankReconciliationPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <DashboardBreadcrumb
-        items={[{ label: "Conciliação Bancária", href: "/bank-reconciliation" }]}
-      />
+      <DashboardBreadcrumb title="Conciliação Bancária" text="Conciliação Bancária" />
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -468,7 +466,7 @@ export default function BankReconciliationPage() {
                             : "—"}
                         </TableCell>
                         <TableCell className="text-right">
-                          {s.balance_after !== null
+                          {s.balance_after != null
                             ? formatBRL(s.balance_after)
                             : "—"}
                         </TableCell>

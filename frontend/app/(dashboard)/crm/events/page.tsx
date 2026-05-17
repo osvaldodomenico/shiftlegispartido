@@ -48,7 +48,7 @@ export default function EventsPage() {
 
   return (
     <>
-      <DashboardBreadcrumb items={[{ label: "CRM" }, { label: "Eventos" }]} />
+      <DashboardBreadcrumb title="CRM" text="Eventos" />
 
       <div className="p-6 space-y-4">
         <div className="flex items-center justify-between">
@@ -131,10 +131,10 @@ export default function EventsPage() {
                       )}
                     </div>
                   </div>
-                  {ev.attendances && ev.attendances.length > 0 && (
+                  {ev.attendance_count != null && ev.attendance_count > 0 && (
                     <Badge variant="secondary" className="text-xs shrink-0">
-                      {ev.attendances.length} participante
-                      {ev.attendances.length !== 1 ? "s" : ""}
+                      {ev.attendance_count} participante
+                      {ev.attendance_count !== 1 ? "s" : ""}
                     </Badge>
                   )}
                 </div>
