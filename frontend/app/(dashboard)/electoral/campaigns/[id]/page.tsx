@@ -82,7 +82,7 @@ export default function CampaignDetailPage() {
   const loadTeam = useCallback(async () => {
     try {
       const data = await getCampaignTeam(id);
-      setTeam(data as TeamMember[]);
+      setTeam(data.data as TeamMember[]);
     } catch {
       toast.error("Erro ao carregar equipe");
     }
@@ -100,7 +100,7 @@ export default function CampaignDetailPage() {
   const loadTseReports = useCallback(async () => {
     try {
       const data = await getTseReports(id);
-      setTseReports(data as TseReport[]);
+      setTseReports(data.data as TseReport[]);
     } catch {
       toast.error("Erro ao carregar relatórios TSE");
     }

@@ -46,7 +46,7 @@ export default function TseReportDetailPage() {
   const loadReport = useCallback(async () => {
     try {
       const data = await getTseReport(id, reportId);
-      setReport(data as TseReport);
+      setReport(data.data as TseReport);
     } catch {
       toast.error("Erro ao carregar relatório");
     }
@@ -55,7 +55,7 @@ export default function TseReportDetailPage() {
   const loadItems = useCallback(async () => {
     try {
       const data = await getTseReportItems(id, reportId);
-      setItems(data as TseReportItem[]);
+      setItems(data.data as TseReportItem[]);
     } catch {
       toast.error("Erro ao carregar itens do relatório");
     }

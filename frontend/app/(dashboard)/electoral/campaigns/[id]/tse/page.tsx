@@ -68,7 +68,7 @@ export default function TseReportsPage() {
     setLoading(true);
     try {
       const data = await getTseReports(id);
-      setReports(data as TseReport[]);
+      setReports(data.data as TseReport[]);
     } catch {
       toast.error("Erro ao carregar relatórios TSE");
     } finally {

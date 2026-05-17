@@ -84,7 +84,7 @@ export default function OrgansPage() {
     setLoadingMembers(true);
     try {
       const data = await getOrganMembers(organ.id);
-      setMembers(data as OrganMember[]);
+      setMembers(data.data as OrganMember[]);
     } catch {
       toast.error("Erro ao carregar membros");
     } finally {
