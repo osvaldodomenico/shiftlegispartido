@@ -26,6 +26,7 @@ import { ElectionsModule } from './modules/elections/elections.module';
 import { CampaignsModule } from './modules/campaigns/campaigns.module';
 import { PartyModule } from './modules/party/party.module';
 import { MandatesModule } from './modules/mandates/mandates.module';
+import { BankReconciliationModule } from './modules/bank-reconciliation/bank-reconciliation.module';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { PermissionsService } from './common/services/permissions.service';
@@ -66,6 +67,7 @@ import { PrismaService } from './database/prisma.service';
     CampaignsModule,
     PartyModule,
     MandatesModule,
+    BankReconciliationModule,
   ],
   providers: [
     PrismaService,

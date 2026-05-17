@@ -65,6 +65,9 @@ model tenants {
   party_organs              party_organs[]
   organ_members             organ_members[]
   mandates                  mandates[]
+  // Bank Reconciliation
+  bank_accounts             bank_accounts[]
+  bank_statements           bank_statements[]
 
   @@map("partido_tenants")
 }
@@ -264,8 +267,9 @@ model transactions {
   cost_center cost_centers?        @relation(fields: [cost_center_id], references: [id])
   campaign    campaigns?           @relation(fields: [campaign_id], references: [id])
 
-  status_history transaction_status_history[]
-  approvals      transaction_approvals[]
+  status_history  transaction_status_history[]
+  approvals       transaction_approvals[]
+  bank_statements bank_statements[]
 
   @@index([tenant_id])
   @@index([tenant_id, status])
@@ -1408,4 +1412,55 @@ model mandates {
   @@index([tenant_id, person_id])
   @@index([tenant_id, status])
   @@map("partido_mandates")
+}
+
+// =============================================================================
+// Conciliação Bancária
+// =============================================================================
+
+model bank_accounts {
+  id              BigInt            @id @default(autoincrement())
+  tenant_id       BigInt
+  name            String            @db.VarChar(255)
+  bank_name       String            @db.VarChar(100)
+  bank_code       String?           @db.VarChar(10)
+  agency          String?           @db.VarChar(20)
+  account_number  String            @db.VarChar(30)
+  type            String            @db.VarChar(20)
+  initial_balance Decimal           @default(0) @db.Decimal(15, 2)
+  is_active       Boolean           @default(true)
+  created_at      DateTime          @default(now())
+  updated_at      DateTime          @updatedAt
+  deleted_at      DateTime?
+
+  tenant     tenants           @relation(fields: [tenant_id], references: [id])
+  statements bank_statements[]
+
+  @@index([tenant_id])
+  @@map("partido_bank_accounts")
+}
+
+model bank_statements {
+  id              BigInt        @id @default(autoincrement())
+  tenant_id       BigInt
+  bank_account_id BigInt
+  date            DateTime
+  description     String        @db.VarChar(500)
+  amount          Decimal       @db.Decimal(15, 2)
+  type            String        @db.VarChar(10)
+  balance_after   Decimal?      @db.Decimal(15, 2)
+  is_reconciled   Boolean       @default(false)
+  transaction_id  BigInt?
+  notes           String?       @db.Text
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+
+  tenant       tenants        @relation(fields: [tenant_id], references: [id])
+  bank_account bank_accounts  @relation(fields: [bank_account_id], references: [id])
+  transaction  transactions?  @relation(fields: [transaction_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([bank_account_id])
+  @@index([tenant_id, is_reconciled])
+  @@map("partido_bank_statements")
 }

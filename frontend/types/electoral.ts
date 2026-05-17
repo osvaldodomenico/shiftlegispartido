@@ -1,11 +1,18 @@
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
 export type CampaignStatus = "planning" | "active" | "finished";
 export type TeamMemberRole = "coordenador" | "cabo_eleitoral" | "voluntario" | "assessor";
 export type TeamMemberPaymentType = "paid" | "volunteer";
 export type ContractStatus = "draft" | "active" | "finished" | "cancelled";
 export type ScheduleEventType = "corpo_a_corpo" | "comicio" | "debate" | "reuniao" | "outro";
 export type ScheduleEventStatus = "scheduled" | "done" | "cancelled";
-export type TseReportType = "receita" | "despesa";
+export type TseItemType = "receita" | "despesa";
 export type TseReportStatus = "draft" | "submitted" | "accepted" | "rejected";
+
+// Legacy alias kept for backward compat
+export type TseReportType = TseItemType;
+
+// ─── Core Entities ────────────────────────────────────────────────────────────
 
 export interface Election {
   id: string;
@@ -42,6 +49,10 @@ export interface CampaignContract {
   value: number;
   status: ContractStatus;
   signed_at?: string;
+  /** TSE compliance: CNPJ or CPF of supplier */
+  supplier_document?: string;
+  /** TSE compliance: invoice/receipt number */
+  invoice_number?: string;
 }
 
 export interface ScheduleEvent {
@@ -55,28 +66,39 @@ export interface ScheduleEvent {
   notes?: string;
 }
 
-export interface TseReport {
-  id: string;
-  campaign_id: string;
-  type: TseReportType;
-  status: TseReportStatus;
-  period_start: string;
-  period_end: string;
-  is_final: boolean;
-  submitted_at?: string;
-}
+// ─── TSE Prestação de Contas ──────────────────────────────────────────────────
 
 export interface TseCode {
   id: string;
   code: string;
   description: string;
-  type: TseReportType;
+  type: TseItemType;
 }
 
 export interface TseReportItem {
   id: string;
   tse_code: TseCode;
+  type: TseItemType;
   description: string;
   amount: number;
   date: string;
+  /** CNPJ/CPF of supplier or donor */
+  document?: string;
+  /** Invoice or receipt reference */
+  invoice_ref?: string;
+}
+
+export interface TseReport {
+  id: string;
+  campaign_id: string;
+  /** Partial or final report */
+  is_final: boolean;
+  status: TseReportStatus;
+  period_start: string;
+  period_end: string;
+  submitted_at?: string;
+  /** Computed totals (may be returned by API) */
+  total_receitas?: number;
+  total_despesas?: number;
+  items?: TseReportItem[];
 }
