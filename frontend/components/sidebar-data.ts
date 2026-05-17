@@ -3,6 +3,7 @@ import {
   CalendarDays,
   CreditCard,
   FilePlus2,
+  FileText,
   HandCoins,
   House,
   Mail,
@@ -163,6 +164,11 @@ export const data = {
       title: "Empresa",
       url: "/company",
       icon: Building2,
+    },
+    {
+      title: "Documentos (GED)",
+      url: "/documents",
+      icon: FileText,
     },
     {
       title: "Perfil",
