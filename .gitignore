@@ -53,3 +53,4 @@ logs/
 # Temp
 tmp/
 temp/
+*.tsbuildinfo
