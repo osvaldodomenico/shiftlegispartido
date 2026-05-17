@@ -19,10 +19,10 @@ export const deleteTag = async (id: string): Promise<void> => {
   await api.delete(`/crm/tags/${id}`);
 };
 export const addPersonTag = async (personId: string, tagId: string): Promise<void> => {
-  await api.post(`/people/${personId}/tags`, { tagId });
+  await api.post(`/crm/people/${personId}/tags`, { tag_ids: [tagId] });
 };
 export const removePersonTag = async (personId: string, tagId: string): Promise<void> => {
-  await api.delete(`/people/${personId}/tags/${tagId}`);
+  await api.delete(`/crm/people/${personId}/tags/${tagId}`);
 };
 
 // Pipeline
@@ -42,13 +42,13 @@ export const deleteStage = async (id: string): Promise<void> => {
   await api.delete(`/crm/pipeline/stages/${id}`);
 };
 export const reorderStages = async (orderedIds: string[]): Promise<void> => {
-  await api.patch("/crm/pipeline/stages/reorder", { orderedIds });
+  await api.post("/crm/pipeline/stages/order", { ordered_ids: orderedIds });
 };
 export const movePerson = async (personId: string, stageId: string, notes?: string): Promise<void> => {
-  await api.post("/crm/pipeline/move", { personId, stageId, notes });
+  await api.post("/crm/pipeline/entries", { people_id: personId, stage_id: stageId, notes });
 };
 export const getPipelineStageContacts = async (stageId: string): Promise<CrmContact[]> => {
-  const res = await api.get<{ data: CrmContact[] }>(`/crm/pipeline/stages/${stageId}/people`);
+  const res = await api.get<{ data: CrmContact[] }>("/crm/pipeline/entries", { params: { stage_id: stageId } });
   return res.data.data;
 };
 
@@ -58,24 +58,26 @@ export const getContacts = async (params?: { stage?: string; tag?: string; type?
   return res.data.data;
 };
 export const getPersonInteractions = async (personId: string): Promise<Interaction[]> => {
-  const res = await api.get<{ data: Interaction[] }>(`/people/${personId}/interactions`);
+  const res = await api.get<{ data: Interaction[] }>("/crm/interactions", { params: { person_id: personId } });
   return res.data.data;
 };
 export const getPersonTasks = async (personId: string): Promise<CrmTask[]> => {
-  const res = await api.get<{ data: CrmTask[] }>(`/people/${personId}/tasks`);
+  const res = await api.get<{ data: CrmTask[] }>("/crm/tasks", { params: { person_id: personId } });
   return res.data.data;
 };
 export const getPersonPipelineHistory = async (personId: string): Promise<unknown> => {
-  const res = await api.get<{ data: unknown }>(`/people/${personId}/pipeline-history`);
+  const res = await api.get<{ data: unknown }>("/crm/pipeline/entries", { params: { people_id: personId } });
   return res.data.data;
 };
 export const getPersonEvents = async (personId: string): Promise<CrmEvent[]> => {
-  const res = await api.get<{ data: CrmEvent[] }>(`/people/${personId}/events`);
+  // backend doesn't support filtering by person — returns all events
+  const res = await api.get<{ data: CrmEvent[] }>("/crm/events");
   return res.data.data;
 };
 export const getPersonTags = async (personId: string): Promise<CrmTag[]> => {
-  const res = await api.get<{ data: CrmTag[] }>(`/people/${personId}/tags`);
-  return res.data.data;
+  // tags are part of the person object; fetch person and extract tags
+  const res = await api.get<{ data: { tags?: CrmTag[] } }>(`/people/${personId}`);
+  return res.data.data?.tags ?? [];
 };
 
 // Interactions
@@ -149,14 +151,15 @@ export const deleteEvent = async (id: string): Promise<void> => {
   await api.delete(`/crm/events/${id}`);
 };
 export const getEventAttendances = async (id: string): Promise<EventAttendance[]> => {
-  const res = await api.get<{ data: EventAttendance[] }>(`/crm/events/${id}/attendances`);
-  return res.data.data;
+  // attendees are included in the event detail response
+  const res = await api.get<{ data: { attendees?: EventAttendance[] } }>(`/crm/events/${id}`);
+  return res.data.data?.attendees ?? [];
 };
 export const addAttendance = async (id: string, personId: string): Promise<void> => {
-  await api.post(`/crm/events/${id}/attendances`, { personId });
+  await api.post(`/crm/events/${id}/attendees`, { personId });
 };
 export const updateAttendance = async (eventId: string, personId: string, status: string): Promise<void> => {
-  await api.patch(`/crm/events/${eventId}/attendances/${personId}`, { status });
+  await api.patch(`/crm/events/${eventId}/attendees/${personId}`, { status });
 };
 
 // Import
@@ -169,15 +172,16 @@ export const uploadCsv = async (file: File): Promise<CrmImport> => {
   return res.data.data;
 };
 export const getImportStatus = async (id: string): Promise<CrmImport> => {
-  const res = await api.get<{ data: CrmImport }>(`/crm/import/${id}/status`);
+  const res = await api.get<{ data: CrmImport }>(`/crm/import/${id}`);
   return res.data.data;
 };
 export const getImportErrors = async (id: string): Promise<unknown> => {
-  const res = await api.get<{ data: unknown }>(`/crm/import/${id}/errors`);
+  // no dedicated errors endpoint — errors are part of the import object
+  const res = await api.get<{ data: unknown }>(`/crm/import/${id}`);
   return res.data.data;
 };
 export const getImportHistory = async (): Promise<CrmImport[]> => {
-  const res = await api.get<{ data: CrmImport[] }>("/crm/import/history");
+  const res = await api.get<{ data: CrmImport[] }>("/crm/import");
   return res.data.data;
 };
 
