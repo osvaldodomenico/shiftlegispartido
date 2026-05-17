@@ -398,7 +398,7 @@ export default function CategoriesPage() {
                 onUpdated={handleUpdated}
             />
 
-            <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
+            <AlertDialog open={!!deleteTarget} onOpenChange={(v: boolean) => !v && setDeleteTarget(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Excluir categoria?</AlertDialogTitle>
