@@ -4,20 +4,20 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Shift Partido",
+  title: "Shift Legis - Partido",
   description: "Plataforma de gestão do diretório com foco operacional, financeiro e administrativo.",
   metadataBase: new URL("http://localhost:3001"),
   openGraph: {
-    title: "Shift Partido",
+    title: "Shift Legis - Partido",
     description: "Plataforma de gestão do diretório com foco operacional, financeiro e administrativo.",
     url: "http://localhost:3001",
-    siteName: "Shift Partido",
+    siteName: "Shift Legis - Partido",
     images: [
       {
         url: "http://localhost:3001/logo-light.png",
         width: 1200,
         height: 630,
-        alt: "Shift Partido",
+        alt: "Shift Legis - Partido",
       },
     ],
     locale: "pt_BR",
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Shift Partido",
+    title: "Shift Legis - Partido",
     description: "Plataforma de gestão do diretório com foco operacional, financeiro e administrativo.",
     images: ["http://localhost:3001/logo-light.png"],
   },

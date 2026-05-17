@@ -1,18 +1,12 @@
 
 'use client'
 
-import { useTheme } from 'next-themes';
-import Image from "next/image";
 import Link from "next/link";
 
 import { useSidebarCollapsed } from '@/hooks/useSidebarCollapsed';
 import { cn } from '@/lib/utils';
-import LogoIcon from '@/public/assets/images/logo-icon.png';
-import LogoWhite from '@/public/assets/images/logo-light.png';
-import LogoDark from '@/public/assets/images/logo.png';
 
 function LogoSidebar() {
-  const { resolvedTheme } = useTheme()
   const isCollapsed = useSidebarCollapsed();
 
   return (
@@ -23,19 +17,14 @@ function LogoSidebar() {
         isCollapsed ? 'px-1' : 'px-4'
       )}
     >
-      <Image
-        src={
-          isCollapsed
-            ? LogoIcon
-            : resolvedTheme === 'dark'
-              ? LogoWhite
-              : LogoDark
-        }
-        alt="Shift Partido"
-        width={isCollapsed ? 44 : 168}
-        height={40}
-        priority
-      />
+      {isCollapsed ? (
+        <span className="text-lg font-bold text-primary">S</span>
+      ) : (
+        <div className="flex flex-col items-start leading-tight">
+          <span className="text-lg font-bold text-foreground tracking-wide">SHIFT LEGIS</span>
+          <span className="text-xs text-muted-foreground tracking-widest uppercase">PARTIDO</span>
+        </div>
+      )}
     </Link>
   )
 }
