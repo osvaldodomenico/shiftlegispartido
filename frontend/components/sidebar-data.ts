@@ -52,6 +52,11 @@ export const data = {
           url: "/finance/approvals",
           circleColor: "bg-amber-500",
         },
+        {
+          title: "Conciliação Bancária",
+          url: "/bank-reconciliation",
+          circleColor: "bg-teal-500",
+        },
       ],
     },
     {
