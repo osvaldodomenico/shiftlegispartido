@@ -53,7 +53,7 @@ export default function TagsSettingsPage() {
   async function loadTags() {
     try {
       const data = await getTags();
-      setTags(data.data as CrmTag[]);
+      setTags(data);
     } catch {
       toast.error("Erro ao carregar tags");
     } finally {
@@ -97,13 +97,13 @@ export default function TagsSettingsPage() {
           color: formColor,
         });
         setTags((prev) =>
-          prev.map((t) => (t.id === editingTag.id ? (updated.data as CrmTag) : t))
+          prev.map((t) => (t.id === editingTag.id ? updated : t))
         );
         toast.success("Tag atualizada");
       } else {
         // Criar nova tag
         const created = await createTag({ name: formName.trim(), color: formColor });
-        setTags((prev) => [...prev, created.data as CrmTag]);
+        setTags((prev) => [...prev, created]);
         toast.success("Tag criada");
       }
       setDialogOpen(false);

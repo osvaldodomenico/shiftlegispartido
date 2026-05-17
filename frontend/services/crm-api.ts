@@ -3,86 +3,194 @@ import type { CrmTag, PipelineStage, CrmContact, Interaction, CrmTask,
   CrmNotification, CrmEvent, EventAttendance, CrmImport, CrmKpis, PipelineFunnel } from "@/types/crm";
 
 // Tags
-export const getTags = () => api.get<CrmTag[]>("/tags");
-export const createTag = (data: { name: string; color: string }) => api.post<CrmTag>("/tags", data);
-export const updateTag = (id: string, data: Partial<{ name: string; color: string }>) => api.patch<CrmTag>(`/tags/${id}`, data);
-export const deleteTag = (id: string) => api.delete(`/tags/${id}`);
-export const addPersonTag = (personId: string, tagId: string) => api.post(`/people/${personId}/tags`, { tagId });
-export const removePersonTag = (personId: string, tagId: string) => api.delete(`/people/${personId}/tags/${tagId}`);
+export const getTags = async (): Promise<CrmTag[]> => {
+  const res = await api.get<{ data: CrmTag[] }>("/crm/tags");
+  return res.data.data;
+};
+export const createTag = async (data: { name: string; color: string }): Promise<CrmTag> => {
+  const res = await api.post<{ data: CrmTag }>("/crm/tags", data);
+  return res.data.data;
+};
+export const updateTag = async (id: string, data: Partial<{ name: string; color: string }>): Promise<CrmTag> => {
+  const res = await api.patch<{ data: CrmTag }>(`/crm/tags/${id}`, data);
+  return res.data.data;
+};
+export const deleteTag = async (id: string): Promise<void> => {
+  await api.delete(`/crm/tags/${id}`);
+};
+export const addPersonTag = async (personId: string, tagId: string): Promise<void> => {
+  await api.post(`/people/${personId}/tags`, { tagId });
+};
+export const removePersonTag = async (personId: string, tagId: string): Promise<void> => {
+  await api.delete(`/people/${personId}/tags/${tagId}`);
+};
 
 // Pipeline
-export const getPipelineStages = () => api.get<PipelineStage[]>("/pipeline/stages");
-export const createStage = (data: { name: string; color: string }) => api.post<PipelineStage>("/pipeline/stages", data);
-export const updateStage = (id: string, data: Partial<{ name: string; color: string }>) => api.patch<PipelineStage>(`/pipeline/stages/${id}`, data);
-export const deleteStage = (id: string) => api.delete(`/pipeline/stages/${id}`);
-export const reorderStages = (orderedIds: string[]) => api.patch("/pipeline/stages/reorder", { orderedIds });
-export const movePerson = (personId: string, stageId: string, notes?: string) =>
-  api.post("/pipeline/move", { personId, stageId, notes });
-export const getPipelineStageContacts = (stageId: string) =>
-  api.get<CrmContact[]>(`/pipeline/stage/${stageId}/people`);
+export const getPipelineStages = async (): Promise<PipelineStage[]> => {
+  const res = await api.get<{ data: PipelineStage[] }>("/crm/pipeline/stages");
+  return res.data.data;
+};
+export const createStage = async (data: { name: string; color: string }): Promise<PipelineStage> => {
+  const res = await api.post<{ data: PipelineStage }>("/crm/pipeline/stages", data);
+  return res.data.data;
+};
+export const updateStage = async (id: string, data: Partial<{ name: string; color: string }>): Promise<PipelineStage> => {
+  const res = await api.patch<{ data: PipelineStage }>(`/crm/pipeline/stages/${id}`, data);
+  return res.data.data;
+};
+export const deleteStage = async (id: string): Promise<void> => {
+  await api.delete(`/crm/pipeline/stages/${id}`);
+};
+export const reorderStages = async (orderedIds: string[]): Promise<void> => {
+  await api.patch("/crm/pipeline/stages/reorder", { orderedIds });
+};
+export const movePerson = async (personId: string, stageId: string, notes?: string): Promise<void> => {
+  await api.post("/crm/pipeline/move", { personId, stageId, notes });
+};
+export const getPipelineStageContacts = async (stageId: string): Promise<CrmContact[]> => {
+  const res = await api.get<{ data: CrmContact[] }>(`/crm/pipeline/stages/${stageId}/people`);
+  return res.data.data;
+};
 
 // Contacts (people with CRM filters)
-export const getContacts = (params?: { stage?: string; tag?: string; type?: string; search?: string }) =>
-  api.get<CrmContact[]>("/people", { params });
-export const getPersonInteractions = (personId: string) =>
-  api.get<Interaction[]>(`/people/${personId}/interactions`);
-export const getPersonTasks = (personId: string) =>
-  api.get<CrmTask[]>(`/people/${personId}/tasks`);
-export const getPersonPipelineHistory = (personId: string) =>
-  api.get(`/people/${personId}/pipeline-history`);
-export const getPersonEvents = (personId: string) =>
-  api.get<CrmEvent[]>(`/people/${personId}/events`);
-export const getPersonTags = (personId: string) =>
-  api.get<CrmTag[]>(`/people/${personId}/tags`);
+export const getContacts = async (params?: { stage?: string; tag?: string; type?: string; search?: string }): Promise<CrmContact[]> => {
+  const res = await api.get<{ data: CrmContact[] }>("/people", { params });
+  return res.data.data;
+};
+export const getPersonInteractions = async (personId: string): Promise<Interaction[]> => {
+  const res = await api.get<{ data: Interaction[] }>(`/people/${personId}/interactions`);
+  return res.data.data;
+};
+export const getPersonTasks = async (personId: string): Promise<CrmTask[]> => {
+  const res = await api.get<{ data: CrmTask[] }>(`/people/${personId}/tasks`);
+  return res.data.data;
+};
+export const getPersonPipelineHistory = async (personId: string): Promise<unknown> => {
+  const res = await api.get<{ data: unknown }>(`/people/${personId}/pipeline-history`);
+  return res.data.data;
+};
+export const getPersonEvents = async (personId: string): Promise<CrmEvent[]> => {
+  const res = await api.get<{ data: CrmEvent[] }>(`/people/${personId}/events`);
+  return res.data.data;
+};
+export const getPersonTags = async (personId: string): Promise<CrmTag[]> => {
+  const res = await api.get<{ data: CrmTag[] }>(`/people/${personId}/tags`);
+  return res.data.data;
+};
 
 // Interactions
-export const createInteraction = (data: {
+export const createInteraction = async (data: {
   person_id: string; type: string; direction: string; notes?: string; occurred_at: string;
-}) => api.post<Interaction>("/interactions", data);
-export const deleteInteraction = (id: string) => api.delete(`/interactions/${id}`);
+}): Promise<Interaction> => {
+  const res = await api.post<{ data: Interaction }>("/crm/interactions", data);
+  return res.data.data;
+};
+export const deleteInteraction = async (id: string): Promise<void> => {
+  await api.delete(`/crm/interactions/${id}`);
+};
 
 // Tasks
-export const getTasks = (params?: { assignedTo?: string; status?: string; due?: string; personId?: string }) =>
-  api.get<CrmTask[]>("/tasks", { params });
-export const createTask = (data: {
+export const getTasks = async (params?: { assignedTo?: string; status?: string; due?: string; personId?: string }): Promise<CrmTask[]> => {
+  const res = await api.get<{ data: CrmTask[] }>("/crm/tasks", { params });
+  return res.data.data;
+};
+export const createTask = async (data: {
   title: string; description?: string; priority: string; due_at?: string;
   assigned_to_id?: string; person_id?: string;
-}) => api.post<CrmTask>("/tasks", data);
-export const updateTask = (id: string, data: Partial<CrmTask>) => api.patch<CrmTask>(`/tasks/${id}`, data);
-export const completeTask = (id: string) => api.patch(`/tasks/${id}/complete`);
-export const deleteTask = (id: string) => api.delete(`/tasks/${id}`);
+}): Promise<CrmTask> => {
+  const res = await api.post<{ data: CrmTask }>("/crm/tasks", data);
+  return res.data.data;
+};
+export const updateTask = async (id: string, data: Partial<CrmTask>): Promise<CrmTask> => {
+  const res = await api.patch<{ data: CrmTask }>(`/crm/tasks/${id}`, data);
+  return res.data.data;
+};
+export const completeTask = async (id: string): Promise<void> => {
+  await api.patch(`/crm/tasks/${id}/complete`);
+};
+export const deleteTask = async (id: string): Promise<void> => {
+  await api.delete(`/crm/tasks/${id}`);
+};
 
 // Notifications
-export const getNotifications = () => api.get<CrmNotification[]>("/notifications");
-export const getUnreadCount = () => api.get<{ count: number }>("/notifications/unread-count");
-export const markRead = (id: string) => api.patch(`/notifications/${id}/read`);
-export const markAllRead = () => api.patch("/notifications/read-all");
+export const getNotifications = async (): Promise<CrmNotification[]> => {
+  const res = await api.get<{ data: CrmNotification[] }>("/crm/notifications");
+  return res.data.data;
+};
+export const getUnreadCount = async (): Promise<{ count: number }> => {
+  const res = await api.get<{ data: { count: number } }>("/crm/notifications/unread-count");
+  return res.data.data;
+};
+export const markRead = async (id: string): Promise<void> => {
+  await api.patch(`/crm/notifications/${id}/read`);
+};
+export const markAllRead = async (): Promise<void> => {
+  await api.patch("/crm/notifications/read-all");
+};
 
 // Events
-export const getEvents = () => api.get<CrmEvent[]>("/events");
-export const getEvent = (id: string) => api.get<CrmEvent>(`/events/${id}`);
-export const createEvent = (data: Partial<CrmEvent>) => api.post<CrmEvent>("/events", data);
-export const updateEvent = (id: string, data: Partial<CrmEvent>) => api.patch<CrmEvent>(`/events/${id}`, data);
-export const deleteEvent = (id: string) => api.delete(`/events/${id}`);
-export const getEventAttendances = (id: string) => api.get<EventAttendance[]>(`/events/${id}/attendances`);
-export const addAttendance = (id: string, personId: string) =>
-  api.post(`/events/${id}/attendances`, { personId });
-export const updateAttendance = (eventId: string, personId: string, status: string) =>
-  api.patch(`/events/${eventId}/attendances/${personId}`, { status });
+export const getEvents = async (): Promise<CrmEvent[]> => {
+  const res = await api.get<{ data: CrmEvent[] }>("/crm/events");
+  return res.data.data;
+};
+export const getEvent = async (id: string): Promise<CrmEvent> => {
+  const res = await api.get<{ data: CrmEvent }>(`/crm/events/${id}`);
+  return res.data.data;
+};
+export const createEvent = async (data: Partial<CrmEvent>): Promise<CrmEvent> => {
+  const res = await api.post<{ data: CrmEvent }>("/crm/events", data);
+  return res.data.data;
+};
+export const updateEvent = async (id: string, data: Partial<CrmEvent>): Promise<CrmEvent> => {
+  const res = await api.patch<{ data: CrmEvent }>(`/crm/events/${id}`, data);
+  return res.data.data;
+};
+export const deleteEvent = async (id: string): Promise<void> => {
+  await api.delete(`/crm/events/${id}`);
+};
+export const getEventAttendances = async (id: string): Promise<EventAttendance[]> => {
+  const res = await api.get<{ data: EventAttendance[] }>(`/crm/events/${id}/attendances`);
+  return res.data.data;
+};
+export const addAttendance = async (id: string, personId: string): Promise<void> => {
+  await api.post(`/crm/events/${id}/attendances`, { personId });
+};
+export const updateAttendance = async (eventId: string, personId: string, status: string): Promise<void> => {
+  await api.patch(`/crm/events/${eventId}/attendances/${personId}`, { status });
+};
 
 // Import
-export const uploadCsv = (file: File) => {
+export const uploadCsv = async (file: File): Promise<CrmImport> => {
   const form = new FormData();
   form.append("file", file);
-  return api.post<CrmImport>("/crm/import/upload", form, {
+  const res = await api.post<{ data: CrmImport }>("/crm/import/upload", form, {
     headers: { "Content-Type": "multipart/form-data" },
   });
+  return res.data.data;
 };
-export const getImportStatus = (id: string) => api.get<CrmImport>(`/crm/import/${id}/status`);
-export const getImportErrors = (id: string) => api.get(`/crm/import/${id}/errors`);
-export const getImportHistory = () => api.get<CrmImport[]>("/crm/import/history");
+export const getImportStatus = async (id: string): Promise<CrmImport> => {
+  const res = await api.get<{ data: CrmImport }>(`/crm/import/${id}/status`);
+  return res.data.data;
+};
+export const getImportErrors = async (id: string): Promise<unknown> => {
+  const res = await api.get<{ data: unknown }>(`/crm/import/${id}/errors`);
+  return res.data.data;
+};
+export const getImportHistory = async (): Promise<CrmImport[]> => {
+  const res = await api.get<{ data: CrmImport[] }>("/crm/import/history");
+  return res.data.data;
+};
 
 // Dashboard
-export const getDashboardKpis = () => api.get<CrmKpis>("/crm/dashboard/kpis");
-export const getPipelineFunnel = () => api.get<PipelineFunnel[]>("/crm/dashboard/pipeline-funnel");
-export const getTasksSummary = () => api.get("/crm/dashboard/tasks-summary");
+export const getDashboardKpis = async (): Promise<CrmKpis> => {
+  const res = await api.get<{ data: CrmKpis }>("/crm/dashboard/kpis");
+  return res.data.data;
+};
+export const getPipelineFunnel = async (): Promise<PipelineFunnel[]> => {
+  const res = await api.get<{ data: PipelineFunnel[] }>("/crm/dashboard/pipeline-funnel");
+  return res.data.data;
+};
+export const getTasksSummary = async (): Promise<unknown> => {
+  const res = await api.get<{ data: unknown }>("/crm/dashboard/tasks-summary");
+  return res.data.data;
+};

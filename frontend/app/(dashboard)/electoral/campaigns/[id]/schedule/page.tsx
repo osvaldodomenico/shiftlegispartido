@@ -81,7 +81,7 @@ export default function CampaignSchedulePage() {
     setLoading(true);
     try {
       const data = await getSchedule(id);
-      setEvents(data.data as ScheduleEvent[]);
+      setEvents(data);
     } catch {
       toast.error("Erro ao carregar agenda");
     } finally {

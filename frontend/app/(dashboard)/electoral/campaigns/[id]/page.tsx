@@ -73,7 +73,7 @@ export default function CampaignDetailPage() {
   const loadCampaign = useCallback(async () => {
     try {
       const data = await getCampaign(id);
-      setCampaign(data.data as Campaign);
+      setCampaign(data);
     } catch {
       toast.error("Erro ao carregar campanha");
     }
@@ -82,7 +82,7 @@ export default function CampaignDetailPage() {
   const loadTeam = useCallback(async () => {
     try {
       const data = await getCampaignTeam(id);
-      setTeam(data.data as TeamMember[]);
+      setTeam(data);
     } catch {
       toast.error("Erro ao carregar equipe");
     }
@@ -91,7 +91,7 @@ export default function CampaignDetailPage() {
   const loadContracts = useCallback(async () => {
     try {
       const data = await getContracts(id);
-      setContracts(data.data as CampaignContract[]);
+      setContracts(data);
     } catch {
       toast.error("Erro ao carregar contratos");
     }
@@ -100,7 +100,7 @@ export default function CampaignDetailPage() {
   const loadTseReports = useCallback(async () => {
     try {
       const data = await getTseReports(id);
-      setTseReports(data.data as TseReport[]);
+      setTseReports(data);
     } catch {
       toast.error("Erro ao carregar relatórios TSE");
     }

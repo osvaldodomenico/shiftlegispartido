@@ -37,7 +37,7 @@ export default function ElectionsPage() {
     setLoading(true);
     try {
       const data = await getElections();
-      setElections(data.data as Election[]);
+      setElections(data);
     } catch {
       toast.error("Erro ao carregar eleições");
     } finally {

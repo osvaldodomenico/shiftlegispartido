@@ -35,9 +35,9 @@ export default function ElectionDetailPage() {
           getElection(id),
           getCampaigns(),
         ]);
-        setElection(electionData.data as Election);
+        setElection(electionData);
         // Filtra campanhas da eleição
-        const filtered = (allCampaigns.data as Campaign[]).filter(
+        const filtered = allCampaigns.filter(
           (c) => c.election.id === id
         );
         setCampaigns(filtered);

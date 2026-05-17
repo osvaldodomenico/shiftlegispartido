@@ -67,7 +67,7 @@ export default function MandatesPage() {
     setLoading(true);
     try {
       const data = await getMandates();
-      setMandates(data.data as Mandate[]);
+      setMandates(data);
     } catch {
       toast.error("Erro ao carregar mandatos");
     } finally {

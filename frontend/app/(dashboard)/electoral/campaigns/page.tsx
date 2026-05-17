@@ -56,7 +56,7 @@ export default function CampaignsPage() {
     setLoading(true);
     try {
       const data = await getCampaigns();
-      setCampaigns(data.data as Campaign[]);
+      setCampaigns(data);
     } catch {
       toast.error("Erro ao carregar campanhas");
     } finally {

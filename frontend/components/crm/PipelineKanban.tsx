@@ -75,13 +75,13 @@ export function PipelineKanban() {
     setLoading(true);
     getPipelineStages()
       .then((s) => {
-        const pipelineStages = s.data as PipelineStage[];
+        const pipelineStages = s;
         setStages(pipelineStages as any);
         return Promise.all(
           pipelineStages.map((stage) =>
             getPipelineStageContacts(stage.id).then((contacts) => ({
               stageId: stage.id,
-              contacts: contacts.data as CrmContact[],
+              contacts: contacts,
             }))
           )
         );
