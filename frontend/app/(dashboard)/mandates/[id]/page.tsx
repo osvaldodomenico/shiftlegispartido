@@ -76,7 +76,7 @@ export default function MandateDetailPage() {
     setLoading(true);
     try {
       const data = await getMandate(id);
-      const m = data as Mandate;
+      const m = data.data as Mandate;
       setMandate(m);
       setForm({
         office: m.office,

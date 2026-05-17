@@ -46,7 +46,7 @@ export default function OrgansPage() {
     setLoading(true);
     try {
       const data = await getOrgans();
-      setOrgans(data as PartyOrgan[]);
+      setOrgans(data.data as PartyOrgan[]);
     } catch {
       toast.error("Erro ao carregar órgãos");
     } finally {

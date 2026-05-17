@@ -63,7 +63,7 @@ export default function ChaptersPage() {
     setLoading(true);
     try {
       const data = await getChapters();
-      setChapters(data as PartyChapter[]);
+      setChapters(data.data as PartyChapter[]);
     } catch {
       toast.error("Erro ao carregar diretórios");
     } finally {

@@ -63,7 +63,7 @@ export default function ChapterDetailPage() {
     setLoading(true);
     try {
       const [ch, mbs] = await Promise.all([getChapter(id), getChapterMembers(id)]);
-      setChapter(ch as PartyChapter);
+      setChapter(ch.data as PartyChapter);
       setMembers(mbs as ChapterMember[]);
     } catch {
       toast.error("Erro ao carregar diretório");

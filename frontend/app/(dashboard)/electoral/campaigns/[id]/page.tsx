@@ -73,7 +73,7 @@ export default function CampaignDetailPage() {
   const loadCampaign = useCallback(async () => {
     try {
       const data = await getCampaign(id);
-      setCampaign(data as Campaign);
+      setCampaign(data.data as Campaign);
     } catch {
       toast.error("Erro ao carregar campanha");
     }
@@ -91,7 +91,7 @@ export default function CampaignDetailPage() {
   const loadContracts = useCallback(async () => {
     try {
       const data = await getContracts(id);
-      setContracts(data as CampaignContract[]);
+      setContracts(data.data as CampaignContract[]);
     } catch {
       toast.error("Erro ao carregar contratos");
     }
