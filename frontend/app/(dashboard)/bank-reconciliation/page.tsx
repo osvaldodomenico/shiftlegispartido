@@ -168,7 +168,7 @@ export default function BankReconciliationPage() {
         bank_code: accountForm.bank_code || undefined,
         agency: accountForm.agency || undefined,
         account_number: accountForm.account_number,
-        type: accountForm.type,
+        type: accountForm.type as "corrente" | "poupanca" | "investimento" | "outro",
         initial_balance: accountForm.initial_balance
           ? parseFloat(accountForm.initial_balance)
           : undefined,
