@@ -2,10 +2,11 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
+# Build context is repo root, so prefix with frontend/
+COPY frontend/package*.json ./
 RUN npm install
 
-COPY . .
+COPY frontend/ .
 
 ARG NEXT_PUBLIC_API_URL=/api/v1
 ARG NEXTAUTH_SECRET
