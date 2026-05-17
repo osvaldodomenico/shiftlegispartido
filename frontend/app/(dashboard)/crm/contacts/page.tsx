@@ -40,6 +40,18 @@ function formatDate(dateStr?: string) {
   });
 }
 
+export function maskPhone(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 10)
+    return d.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3").trim().replace(/-$/, "");
+  return d.replace(/(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3").trim().replace(/-$/, "");
+}
+
+export function maskCEP(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 8);
+  return d.replace(/(\d{5})(\d{0,3})/, "$1-$2").replace(/-$/, "");
+}
+
 export default function ContactsListPage() {
   const [contacts, setContacts] = useState<CrmContact[]>([]);
   const [stages, setStages] = useState<PipelineStage[]>([]);

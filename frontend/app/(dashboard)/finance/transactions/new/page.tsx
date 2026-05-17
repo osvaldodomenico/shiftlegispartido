@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import DashboardBreadcrumb from "@/components/layout/dashboard-breadcrumb";
@@ -23,6 +23,7 @@ import {
     getCategories,
     FinancialCategory,
 } from "@/services/financial-categories.service";
+import api from "@/services/api";
 
 const inputClass =
     "border border-neutral-300 px-5 dark:border-slate-500 focus:border-primary dark:focus:border-primary focus-visible:border-primary h-12 rounded-lg !shadow-none !ring-0";
@@ -50,29 +51,99 @@ const INITIAL_FORM: FormState = {
     person_id: "",
 };
 
+function maskBRL(raw: string): string {
+    const digits = raw.replace(/\D/g, "");
+    if (!digits) return "";
+    const cents = parseInt(digits, 10);
+    return (cents / 100).toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+}
+
+interface PersonResult {
+    id: number;
+    name: string;
+    email: string;
+}
+
 export default function NewTransactionPage() {
     const router = useRouter();
     const [form, setForm] = useState<FormState>(INITIAL_FORM);
     const [loading, setLoading] = useState(false);
     const [categories, setCategories] = useState<FinancialCategory[]>([]);
 
+    // Person search state
+    const [personSearch, setPersonSearch] = useState("");
+    const [personResults, setPersonResults] = useState<PersonResult[]>([]);
+    const [selectedPerson, setSelectedPerson] = useState<{ id: number; name: string } | null>(null);
+    const [showDropdown, setShowDropdown] = useState(false);
+    const personRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
         getCategories().catch(() => {});
-        // filtra por tipo assim que o usuário selecionar
     }, []);
 
-    // Recarrega categorias filtradas pelo tipo selecionado
+    // Reload categories filtered by type
     useEffect(() => {
         if (!form.type) return;
         getCategories(form.type as "income" | "expense")
             .then(setCategories)
             .catch(() => setCategories([]));
-        // limpa categoria selecionada ao trocar tipo
         setForm((prev) => ({ ...prev, category_id: "" }));
     }, [form.type]);
 
+    // Debounced person search
+    useEffect(() => {
+        if (!personSearch || selectedPerson) {
+            setPersonResults([]);
+            setShowDropdown(false);
+            return;
+        }
+        const t = setTimeout(async () => {
+            try {
+                const res = await api.get<{ data: PersonResult[] }>(
+                    `/people?search=${encodeURIComponent(personSearch)}`
+                );
+                const results = res.data.data ?? [];
+                setPersonResults(results);
+                setShowDropdown(results.length > 0);
+            } catch {
+                setPersonResults([]);
+                setShowDropdown(false);
+            }
+        }, 400);
+        return () => clearTimeout(t);
+    }, [personSearch, selectedPerson]);
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        function handleClick(e: MouseEvent) {
+            if (personRef.current && !personRef.current.contains(e.target as Node)) {
+                setShowDropdown(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClick);
+        return () => document.removeEventListener("mousedown", handleClick);
+    }, []);
+
     function set(key: keyof FormState, value: string) {
         setForm((prev) => ({ ...prev, [key]: value }));
+    }
+
+    function selectPerson(p: PersonResult) {
+        setSelectedPerson({ id: p.id, name: p.name });
+        set("person_id", String(p.id));
+        setPersonSearch("");
+        setPersonResults([]);
+        setShowDropdown(false);
+    }
+
+    function clearPerson() {
+        setSelectedPerson(null);
+        set("person_id", "");
+        setPersonSearch("");
+        setPersonResults([]);
     }
 
     async function handleSubmit(e: React.FormEvent) {
@@ -86,13 +157,18 @@ export default function NewTransactionPage() {
             toast.error("Selecione uma categoria.");
             return;
         }
+        if (!form.person_id) {
+            toast.error("Selecione uma pessoa.");
+            return;
+        }
 
         setLoading(true);
         try {
             const dueDate = new Date(form.due_date);
+            const rawAmount = form.amount.replace(/\./g, "").replace(",", ".");
             const payload: CreateTransactionPayload = {
                 description: form.description,
-                amount: parseFloat(form.amount),
+                amount: parseFloat(rawAmount),
                 type: form.type as "income" | "expense",
                 due_date: form.due_date,
                 category_id: parseInt(form.category_id),
@@ -163,13 +239,12 @@ export default function NewTransactionPage() {
                                     </Label>
                                     <Input
                                         id="amount"
-                                        type="number"
-                                        step="0.01"
-                                        min="0.01"
+                                        type="text"
+                                        inputMode="numeric"
                                         className={inputClass}
                                         placeholder="0,00"
                                         value={form.amount}
-                                        onChange={(e) => set("amount", e.target.value)}
+                                        onChange={(e) => set("amount", maskBRL(e.target.value))}
                                         required
                                     />
                                 </div>
@@ -242,21 +317,62 @@ export default function NewTransactionPage() {
                             {/* Pessoa */}
                             <div>
                                 <Label
-                                    htmlFor="person_id"
+                                    htmlFor="person_search"
                                     className="text-[#4b5563] dark:text-white mb-2"
                                 >
-                                    ID da Pessoa *
+                                    Pessoa *
                                 </Label>
-                                <Input
-                                    id="person_id"
-                                    type="number"
-                                    min="1"
-                                    className={inputClass}
-                                    placeholder="ID da pessoa vinculada"
-                                    value={form.person_id}
-                                    onChange={(e) => set("person_id", e.target.value)}
-                                    required
-                                />
+                                <div ref={personRef} className="relative">
+                                    {selectedPerson ? (
+                                        <div className="flex items-center gap-2 h-12 px-5 border border-neutral-300 dark:border-slate-500 rounded-lg bg-background">
+                                            <span className="flex-1 text-sm">
+                                                {selectedPerson.name}{" "}
+                                                <span className="text-neutral-400 dark:text-neutral-500">
+                                                    (#{selectedPerson.id})
+                                                </span>
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={clearPerson}
+                                                className="text-neutral-400 hover:text-neutral-700 dark:hover:text-white text-lg leading-none px-1"
+                                                aria-label="Limpar seleção"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <Input
+                                                id="person_search"
+                                                type="text"
+                                                className={inputClass}
+                                                placeholder="Buscar por nome..."
+                                                value={personSearch}
+                                                onChange={(e) => setPersonSearch(e.target.value)}
+                                                autoComplete="off"
+                                            />
+                                            {showDropdown && (
+                                                <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-600 rounded-lg shadow-lg overflow-hidden">
+                                                    {personResults.map((p) => (
+                                                        <button
+                                                            key={p.id}
+                                                            type="button"
+                                                            className="w-full text-left px-4 py-3 text-sm hover:bg-neutral-50 dark:hover:bg-slate-700 border-b border-neutral-100 dark:border-slate-700 last:border-0"
+                                                            onClick={() => selectPerson(p)}
+                                                        >
+                                                            <span className="font-medium">{p.name}</span>
+                                                            {p.email && (
+                                                                <span className="text-neutral-400 dark:text-neutral-500 ml-2">
+                                                                    {p.email}
+                                                                </span>
+                                                            )}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Centro de custo (opcional) */}
