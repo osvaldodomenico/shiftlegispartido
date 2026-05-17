@@ -54,7 +54,7 @@ export default function PipelineSettingsPage() {
   async function loadStages() {
     try {
       const data = await getPipelineStages();
-      setStages((data as PipelineStage[]).sort((a, b) => a.order - b.order));
+      setStages((data.data as PipelineStage[]).sort((a, b) => a.order - b.order));
     } catch {
       toast.error("Erro ao carregar etapas");
     } finally {
@@ -99,7 +99,7 @@ export default function PipelineSettingsPage() {
         });
         setStages((prev) =>
           prev.map((s) =>
-            s.id === editingStage.id ? (updated as PipelineStage) : s
+            s.id === editingStage.id ? (updated.data as PipelineStage) : s
           )
         );
         toast.success("Etapa atualizada");
