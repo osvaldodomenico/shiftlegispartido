@@ -24,7 +24,7 @@ export function TseCodeSelect({ value, onChange }: Props) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    getTseCodes().then((c) => setCodes(c as TseCode[]));
+    getTseCodes().then((c) => setCodes(c.data as TseCode[]));
   }, []);
 
   return (
