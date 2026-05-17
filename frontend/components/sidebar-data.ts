@@ -3,6 +3,7 @@ import {
   CalendarDays,
   CreditCard,
   FilePlus2,
+  HandCoins,
   House,
   Mail,
   UserRound,
@@ -36,6 +37,11 @@ export const data = {
       isActive: true,
       items: [
         {
+          title: "Transações",
+          url: "/finance/transactions",
+          circleColor: "bg-blue-500",
+        },
+        {
           title: "Nova Transação",
           url: "/finance/transactions/new",
           circleColor: "bg-primary",
@@ -46,6 +52,14 @@ export const data = {
           circleColor: "bg-amber-500",
         },
       ],
+    },
+    {
+      label: "Partidário",
+    },
+    {
+      title: "Contribuições",
+      url: "/contributions",
+      icon: HandCoins,
     },
     {
       label: "CRM",
