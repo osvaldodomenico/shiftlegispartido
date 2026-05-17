@@ -53,6 +53,11 @@ export const data = {
           circleColor: "bg-amber-500",
         },
         {
+          title: "Categorias",
+          url: "/finance/categories",
+          circleColor: "bg-violet-500",
+        },
+        {
           title: "Conciliação Bancária",
           url: "/bank-reconciliation",
           circleColor: "bg-teal-500",

@@ -19,3 +19,22 @@ export async function getCategories(
   const response = await api.get<ApiResponse>('/finance/categories', { params })
   return response.data.data
 }
+
+export async function getAllCategories(): Promise<FinancialCategory[]> {
+  const response = await api.get<ApiResponse>('/finance/categories')
+  return response.data.data
+}
+
+export async function createCategory(data: { name: string; type: 'income' | 'expense'; description?: string }): Promise<FinancialCategory> {
+  const response = await api.post<{ success: boolean; data: FinancialCategory }>('/finance/categories', data)
+  return response.data.data
+}
+
+export async function updateCategory(id: number, data: { name?: string; is_active?: boolean; description?: string }): Promise<FinancialCategory> {
+  const response = await api.patch<{ success: boolean; data: FinancialCategory }>(`/finance/categories/${id}`, data)
+  return response.data.data
+}
+
+export async function deleteCategory(id: number): Promise<void> {
+  await api.delete(`/finance/categories/${id}`)
+}
